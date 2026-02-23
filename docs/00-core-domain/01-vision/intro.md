@@ -2,7 +2,7 @@
 sidebar_position: 1
 title: Intro
 ---
-Diego test
+
 # ¿Qué es VyteMerge?
 
 ## Overview
