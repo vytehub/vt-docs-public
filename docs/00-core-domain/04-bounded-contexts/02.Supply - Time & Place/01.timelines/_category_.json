@@ -1,0 +1,9 @@
+{
+  "label": "Timelines",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Timelines",
+    "description": "Tiempo en VyteMerge: el Timeline es la fuente de verdad del tiempo (Events/Bookings), define conflictos (Conflict Rules) y controla sharing/visibilidad de disponibilidad."
+  }
+}

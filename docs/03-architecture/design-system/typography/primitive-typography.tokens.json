@@ -1,0 +1,60 @@
+{
+  "fonts": {
+    "family": {
+      "sans": {
+        "value": "Inter",
+        "type": "fontFamilies"
+      },
+      "mono": {
+        "value": "JetBrains Mono",
+        "type": "fontFamilies"
+      }
+    },
+    "weight": {
+      "regular": {
+        "value": 400,
+        "type": "fontWeights"
+      },
+      "medium": {
+        "value": 500,
+        "type": "fontWeights"
+      },
+      "semibold": {
+        "value": 600,
+        "type": "fontWeights"
+      },
+      "bold": {
+        "value": 700,
+        "type": "fontWeights"
+      }
+    },
+    "letterSpacing": {
+      "normal": {
+        "value": 0,
+        "type": "letterSpacing"
+      },
+      "tight": {
+        "value": -0.16,
+        "type": "letterSpacing"
+      },
+      "wide": {
+        "value": 0.32,
+        "type": "letterSpacing"
+      }
+    },
+    "lineHeight": {
+      "tight": {
+        "value": 1.1,
+        "type": "lineHeights"
+      },
+      "normal": {
+        "value": 1.4,
+        "type": "lineHeights"
+      },
+      "relaxed": {
+        "value": 1.6,
+        "type": "lineHeights"
+      }
+    }
+  }
+}

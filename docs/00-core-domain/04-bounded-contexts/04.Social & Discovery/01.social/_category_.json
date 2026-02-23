@@ -1,0 +1,9 @@
+{
+  "label": "Social",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Social",
+    "description": "Capa social de VyteMerge: Profiles, Follow (Social Graph), Posts y Reactions. Define el loop social end-to-end y su interacción con Privacy/Access, Feed/Suggest y Listings."
+  }
+}

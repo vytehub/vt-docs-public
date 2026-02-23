@@ -1,0 +1,8 @@
+{
+  "label": "Notifications",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Recordatorios y notificaciones automáticas: canales, plantillas, tracking y buenas prácticas."
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "label": "Módulos",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Módulos (bounded contexts) del sistema."
+  }
+}
