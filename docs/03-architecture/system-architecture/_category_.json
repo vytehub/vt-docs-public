@@ -1,0 +1,9 @@
+{
+  "label": "Architecture",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "title": "Architecture",
+    "description": "Vista macro del sistema: módulos, MFEs y flujos end-to-end."
+  }
+}

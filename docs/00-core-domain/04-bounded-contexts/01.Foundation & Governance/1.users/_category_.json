@@ -1,0 +1,9 @@
+{
+  "label": "Users",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Users",
+    "description": "Identidad y cuentas: registro/login, sesiones, upgrade a Business, perfiles asociados y configuración básica."
+  }
+}

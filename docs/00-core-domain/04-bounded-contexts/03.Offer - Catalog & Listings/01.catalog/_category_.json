@@ -1,0 +1,8 @@
+{
+  "label": "Services & Products",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Definiciones reusables: qué ofrecés (Services) y qué vendés (Products)."
+  }
+}

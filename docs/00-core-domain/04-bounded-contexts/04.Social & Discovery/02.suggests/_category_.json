@@ -1,0 +1,8 @@
+{
+  "label": "Suggest",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Sugerencias contextuales basadas en agenda, lugares y disponibilidad: 'te queda de paso', 'antes/después de tu cita' y recomendaciones personalizadas (opt-in)."
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "label": "Places",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Lugares en VyteMerge: ubicación, zona horaria, privacidad y cómo se referencian desde listings, bookings y eventos."
+  }
+}

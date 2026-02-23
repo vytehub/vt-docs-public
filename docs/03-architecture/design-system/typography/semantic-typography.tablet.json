@@ -1,0 +1,76 @@
+{
+  "text": {
+    "size": {
+      "sm": {
+        "value": "{size.14}",
+        "type": "fontSizes"
+      },
+      "base": {
+        "value": "{size.16}",
+        "type": "fontSizes"
+      },
+      "lg": {
+        "value": "{size.18}",
+        "type": "fontSizes"
+      }
+    }
+  },
+  "font": {
+    "family": {
+      "body": {
+        "value": "{font.family.sans}",
+        "type": "fontFamilies"
+      },
+      "code": {
+        "value": "{font.family.mono}",
+        "type": "fontFamilies"
+      }
+    },
+    "weight": {
+      "regular": {
+        "value": "{font.weight.regular}",
+        "type": "fontWeights"
+      },
+      "bold": {
+        "value": "{font.weight.bold}",
+        "type": "fontWeights"
+      },
+      "medium": {
+        "value": "{font.weight.medium}",
+        "type": "fontWeights"
+      },
+      "semibold": {
+        "value": "{font.weight.semibold}",
+        "type": "fontWeights"
+      }
+    }
+  },
+  "leading": {
+    "height": {
+      "tight": {
+        "value": "{font.lineHeight.tight}",
+        "type": "lineHeights"
+      },
+      "normal": {
+        "value": "{font.lineHeight.normal}",
+        "type": "lineHeights"
+      }
+    }
+  },
+  "tracking": {
+    "letterSpacing": {
+      "normal": {
+        "value": "{font.letterSpacing.normal}",
+        "type": "letterSpacing"
+      },
+      "tight": {
+        "value": "{font.letterSpacing.tight}",
+        "type": "letterSpacing"
+      },
+      "wide": {
+        "value": "{font.letterSpacing.wide}",
+        "type": "letterSpacing"
+      }
+    }
+  }
+}
