@@ -5,8 +5,6 @@ title: Intro
 
 # ¿Qué es VyteMerge?
 
-Diego test
-
 ## Overview
 VyteMerge es una plataforma social de **Smart Booking + Marketplace + Social Graph**, diseñada para reemplazar el calendario clásico por una **vista de Timeline** (tipo *git merge*).  
 Permite a **usuarios** organizar su tiempo y descubrir **listings**, y a **negocios** optimizar su ocupación y promocionar **listings** mediante campañas.
