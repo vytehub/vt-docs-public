@@ -1,4 +1,4 @@
-# Mdulos/features de negocio a revisar (pendientes)
+# Módulos/features de negocio a revisar (pendientes)
 
 > Objetivo: **solo listar** qué falta cubrir a nivel **lógica de negocio** (no formato de documentación), para revisarlo más adelante.
 
@@ -6,51 +6,16 @@
 
 ## P0 — Para que el marketplace/booking cierre en producción
 
-### 1) Policies (Cancelación / Reprogramación / No-show)
-**Por qué es crítico:** es donde se rompen los casos reales (soporte, conflictos, confianza, conversión).  
-**Reglas mínimas a definir (v1):**
-- Ventanas de cancelación y reprogramación (por Listing/Service).
-- Penalidades: fee fijo o porcentaje; quién cobra y a quién afecta.
-- No-show: cómo se determina “asistencia” y cómo se resuelve (prueba, apelación).
-- Impacto en Booking lifecycle y (si hay pagos) en Order.
+> Los cuatro contextos P0 ya tienen documentación inicial en sus propios directorios:
 
-**Encaje en modelo:** Listing.Policy + Booking lifecycle + Order adjustments (si aplica).
+| Contexto | Directorio |
+|---|---|
+| Policies (Cancelación / Reprogramación / No-show) | `07-policies/index.md` |
+| Commerce (Payments / Refunds / Disputes / Payouts) | `06-commerce/index.md` |
+| Trust & Safety (Report/Block/Moderation/Reviews) | `09-trust-safety/index.md` |
+| Org & Roles (Teams/Staff/Delegation) | `08-org-roles/index.md` |
 
----
-
-### 2) Commerce end-to-end (Payments / Refunds / Disputes / Payouts)
-**Por qué es crítico:** sin settlement/payout/refunds el “Order” queda incompleto para marketplace real.  
-**Reglas mínimas a definir (v1):**
-- Estados de Order: created → authorized/paid → refunded (parcial/total).
-- Regla de payout: cuándo se libera dinero (al confirmar vs al completar vs con hold).
-- Disputas/chargebacks: quién arbitra, plazos, evidencias, resultado.
-- Relación Booking ↔ Order: qué acciones del Booking mutan el Order (cancel/reschedule/no-show).
-
-**Encaje en modelo:** Order (+ futuros objetos: Payout/Refund/Dispute) ↔ Booking/Event.
-
----
-
-### 3) Trust & Safety (Report/Block/Moderation/Reviews)
-**Por qué es crítico:** social graph + marketplace escala abuso, spam, fraude; reviews sostienen confianza.  
-**Reglas mínimas a definir (v1):**
-- Report/Block para Profile, Listing, Post, Channel.
-- Acciones de moderación: hide, suspend, takedown, ban.
-- Reviews/ratings: elegibilidad (ej: solo Booking=Completed), anti-abuso básico.
-- Guidelines de contenido y enforcement.
-
-**Encaje en modelo:** Profile/Follow/Post/Listing/Channel + reglas de elegibilidad ligadas a Booking.
-
----
-
-### 4) Org & Roles (Teams/Staff/Delegation operativa)
-**Por qué es crítico:** B2B real necesita roles y auditoría; sin esto, operación manual.  
-**Reglas mínimas a definir (v1):**
-- Roles: owner / manager / staff.
-- Permisos por acción: publicar Listing, confirmar Booking, operar refunds, ver datos.
-- Delegación y auditoría (audit log) para acciones sensibles.
-- Multi-Profile / multi-Place / multi-Timeline (si aplica por vertical).
-
-**Encaje en modelo:** Agreements + Access + (Profile como Org) + ownership/delegación sobre Timelines/Listings.
+Cada doc incluye entidades, comandos, eventos, integraciones y preguntas abiertas a resolver antes de implementar.
 
 ---
 

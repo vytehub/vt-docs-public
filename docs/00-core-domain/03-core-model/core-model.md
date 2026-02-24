@@ -467,23 +467,38 @@ Integración típica (por etapas):
 
 ## VyteMerge
 
-> Placeholder (Jarvis): este término aparece 35 veces en módulos pero no está definido en `concepts`.
+VyteMerge es el nombre del **producto** (la plataforma, la app, el dominio de negocio).
 
-Definición:
-- (completar)
+Es la marca orientada al usuario: médicos, docentes, negocios y clientes usan **VyteMerge** para publicar servicios, gestionar agendas y realizar reservas.
+
+> El repo/workspace de desarrollo se denomina **VyteHub** (codename de infraestructura).
+> Ver nota en `AI.md` para la distinción completa.
 
 Relaciones:
-- (completar)
-
-
+- Toda entidad del modelo (Profile, Listing, Booking, etc.) vive dentro del contexto de VyteMerge.
+- Los bounded contexts documentados en `04-bounded-contexts/` definen el subdominio al que pertenece cada entidad.
 
 ## Timeline Conflict Rules
 
-> Placeholder (Jarvis): este término aparece 9 veces en módulos pero no está definido en `concepts`.
+Las **Conflict Rules** (reglas de conflicto) son reglas configuradas a nivel de **Timeline** que determinan:
 
-Definición:
-- (completar)
+1. **Qué cuenta como conflicto**: qué eventos/condiciones hacen que un slot no sea válido o que un booking requiera revisión.
+2. **Qué acción tomar**: bloquear slot, degradar visibilidad, requerir confirmación manual, o priorizar.
+
+Ejemplos de reglas:
+- "Si hay un evento 'Acto Escolar', no generar slots ese día."
+- "Si hay una 'Consulta', bloquear toda la franja horaria."
+- "Si hay un evento 'Viaje', bloquear toda la semana."
+- "Si el evento es 'Personal', bloquear disponibilidad pública pero mostrar 'ocupado'."
+
+Salidas posibles:
+- Bloqueo total (slot no disponible)
+- Degradación (`VisibilityMode.BusyOnly`)
+- Priorización (qué gana si hay colisión)
+- Confirmación manual requerida (futuro)
 
 Relaciones:
-- (completar)
+- Viven en **Timeline** (porque afectan el tiempo del owner).
+- Las reglas del **Listing** (buffers, ventanas) son restricciones adicionales, pero la decisión de conflicto es del Timeline.
+- Documentación de referencia: `04-bounded-contexts/02.Supply - Time & Place/01.timelines/02.timeline_conflict_rules.md`
 

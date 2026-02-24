@@ -73,11 +73,43 @@ erDiagram
 
 ### 4.1 Proveedor: crear Service + Listing + SlotConfig y generar Slots
 
-![alt text](image.png)
+```mermaid
+sequenceDiagram
+  participant P as Proveedor
+  participant API as .NET API
+  participant DB as PostgreSQL
+
+  P->>API: CreateServiceOrProduct
+  API->>DB: persist Service/Product
+
+  P->>API: CreateListing (refs Service, defines SlotConfig)
+  API->>DB: persist Listing + SlotConfig
+
+  P->>API: PublishListing
+  API->>DB: Listing.status = Published
+
+  API-->>API: project Slots (Timeline + SlotConfig + ConflictRules)
+  API->>DB: persist Slots (SlotsProjected event)
+```
 
 ### 4.2 Cliente: ver disponibilidad y crear Booking
 
-![alt text](image-1.png)
+```mermaid
+sequenceDiagram
+  participant C as Cliente
+  participant API as .NET API
+  participant DB as PostgreSQL
+
+  C->>API: SearchListings / QueryAvailability (listingId + dateRange)
+  API->>DB: read projected Slots (filtered by privacy/eligibility)
+  API-->>C: available Slots
+
+  C->>API: RequestBooking / CreateBooking (slotId, listingId)
+  API->>DB: persist Booking (status = Requested or Confirmed)
+  API-->>API: create Event in Timeline (blocks slot)
+  API->>DB: persist Event (SlotsProjected reprojection)
+  API-->>C: BookingRequested / BookingCreated
+```
 
 ---
 
@@ -112,7 +144,7 @@ flowchart TB
 ---
 
 ## Checklist (para alinear código ↔ doc)
-- [ ] Confirmar dónde vive **SlotConfig** (Offer vs Supply) y mantener 1 solo owner.
-- [ ] Definir 1 endpoint/command “**GenerateSlots**” con inputs claros (dateRange + rules).
-- [ ] Definir “**QueryAvailability**” como lectura optimizada (listingId + rango).
-- [ ] Definir transición de estados de Booking (mínimo: Pending/Confirmed/Cancelled/Completed).
+- [x] Confirmar dónde vive **SlotConfig** (Offer vs Supply) — decidido en `private/decisions/ADR-0001-slotconfig-ownership.md`: SlotConfig vive en **Offer** (Listing lo define), Supply proyecta Slots.
+- [ ] Definir 1 endpoint/command “**GenerateSlots**” con inputs claros (dateRange + rules) — ver `03-architecture/api-contracts/`.
+- [ ] Definir “**QueryAvailability**” como lectura optimizada (listingId + rango) — ver `03-architecture/api-contracts/`.
+- [x] Definir transición de estados de Booking — ver `01-domain-behavior/02-lifecycles/booking-lifecycle.md`.

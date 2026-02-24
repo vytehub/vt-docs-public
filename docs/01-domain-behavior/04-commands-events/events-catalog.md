@@ -38,18 +38,33 @@ description: Catálogo inicial de comandos/eventos mencionados en Domain Behavio
 - SlotsProjected (projection event)
 
 ## Booking
+
+> **RequestBooking vs CreateBooking — Distinción importante**
+>
+> La elección del comando depende del flag `Listing.booking_rules.confirmation_required`:
+>
+> | `confirmation_required` | Comando a usar | Booking inicial | Evento emitido |
+> |---|---|---|---|
+> | `true` | `RequestBooking` | `Requested` (espera aprobación) | `BookingRequested` |
+> | `false` | `CreateBooking` | `Confirmed` (auto-confirmado) | `BookingCreated` |
+>
+> No son sinónimos: representan flujos distintos con estados de inicio diferentes.
+
 **Commands**
-- RequestBooking / CreateBooking
-- ConfirmBooking (si aplica)
-- CancelBooking
-- MarkNoShow
+- `RequestBooking` — cuando `confirmation_required = true`; el proveedor debe confirmar manualmente.
+- `CreateBooking` — cuando `confirmation_required = false`; confirmación automática inmediata.
+- `ConfirmBooking` — el proveedor aprueba un booking en estado `Requested`.
+- `CancelBooking` — cancela desde cualquier estado activo (`Requested` o `Confirmed`).
+- `MarkNoShow` — marca no-show desde estado `Confirmed`.
+- `CompleteBooking` — cierra el booking desde estado `Confirmed`.
 
 **Events**
-- BookingRequested / BookingCreated
-- BookingConfirmed
-- BookingCancelled
-- BookingNoShow
-- BookingCompleted
+- `BookingRequested` — booking creado, pendiente de confirmación manual.
+- `BookingCreated` — booking creado y auto-confirmado.
+- `BookingConfirmed` — proveedor aprobó un `BookingRequested`.
+- `BookingCancelled` — cancelado (desde `Requested` o `Confirmed`).
+- `BookingNoShow` — marcado como no-show.
+- `BookingCompleted` — cerrado exitosamente.
 
 ## Social
 **Commands**

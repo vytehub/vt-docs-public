@@ -1,0 +1,9 @@
+{
+  "label": "Policies",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "title": "Policies — Cancellation, Reschedule & No-show",
+    "description": "P0: rules governing how bookings can be cancelled or rescheduled, and consequences for no-shows."
+  }
+}
