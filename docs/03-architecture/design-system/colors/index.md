@@ -50,7 +50,6 @@ Cada variable semántica es un **alias** que apunta a una variable en **Primitiv
 ---
 
 ## 3) Qué NO hacer (para no repetir el lío)
-
 - ❌ No crear tokens tipo `button.primary.bg` dentro de la colección semántica principal.
   - Eso te ata la colección a componentes y crece sin control.
 - ✅ En cambio, el Button (y cualquier control) debe construirse con:
