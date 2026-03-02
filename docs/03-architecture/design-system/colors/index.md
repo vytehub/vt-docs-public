@@ -98,7 +98,7 @@ Piensa “contenido” como **lo que está encima de una superficie**.
 - `secondary.*`: jerarquía media (metadata, labels secundarios).
 - `muted`: baja jerarquía (ayudas, placeholder, hint).
 - `inverse`: para usar sobre `surface.invert` u otros fondos oscuros.
-- `on.primary` / `on.accent`: para texto encima de backgrounds de acción (botones filled).
+- `on.primary` / `on.secondary`: para texto encima de backgrounds de acción (botones filled).
 - `link.*`: links.
 - `accent.*`: texto destacado (no CTA, sino “highlight”).
 - `feedback.*`: texto en estados.
@@ -121,8 +121,9 @@ Piensa “contenido” como **lo que está encima de una superficie**.
 |`content.text.link.disabledLight`|`#d1d5db`|`#4b5563`|Text|Link disabled sobre fondos claros.|
 |`content.text.link.focus`|`#3730a3`|`#c7d2fe`|Text|Link focus (teclado).|
 |`content.text.link.hover`|`#4338ca`|`#c7d2fe`|Text|Link hover.|
-|`content.text.on.accent`|`#ffffff`|`#111827`|Text|Texto sobre background de acción accent.|
+|`content.text.on.accent`|`#ffffff`|`#111827`|Text|**Deprecated.** Alias de `on.secondary`. Mantener solo durante migración.|
 |`content.text.on.primary`|`#ffffff`|`#111827`|Text|Texto sobre background de acción primaria (botón filled).|
+|`content.text.on.secondary`|`#ffffff`|`#111827`|Text|Texto sobre background de acción secondary (botón filled rose).|
 |`content.text.primary.default`|`#111827`|`#f9fafb`|Text|Texto principal (body/headers).|
 |`content.text.primary.disabled`|`#9ca3af`|`#6b7280`|Text|Texto principal en disabled.|
 |`content.text.primary.inverse`|`#ffffff`|`#111827`|Text|Texto sobre superficies invertidas.|
@@ -218,7 +219,7 @@ También existen rings para:
 
 ---
 
-### 4.5 `action.*` — sistema de “Primary” y “Accent”
+### 4.5 `action.*` — Primary, Secondary, Neutral, and Danger
 
 Esta familia es la que hace que “mi botón cambie solo si cambio el primary”.
 
@@ -230,13 +231,17 @@ Esta familia es la que hace que “mi botón cambie solo si cambio el primary”
   - icon buttons,
   - estados: default/hover/active/focus/disabled.
 
-#### `action.accent.*`
-- **Accent** = color secundario/“especial” (promo, highlight especial).
-- No es para el 80% de los CTAs. Es para casos puntuales.
+#### `action.secondary.*`
+- **secondary**: alternative/second-level CTA (rose). Use when a second important action exists alongside primary.
+> Rule: primary flow → `action.primary.*`; secondary important action → `action.secondary.*`
 
-> Regla simple:  
-> si el usuario debe hacer *sí o sí* esa acción para completar el flujo → `action.primary.*`  
-> si es una acción especial o secundaria importante pero no principal → `action.accent.*`
+#### `action.neutral.*` (soft)
+- **neutral**: safe soft actions (Cancel, Back, Close). No strong color signal. Gray-based.
+
+#### `action.danger.*`
+- **danger**: destructive actions (Delete, Remove, Revoke). Red-based for clear warning signal.
+
+> ⚠️ **Deprecated alias:** `action.accent` is a temporary CSS-variable alias pointing to `action.secondary`. It will be removed in a future release. Migrate to `action.secondary.*`.
 
 **Scopes recomendados en Figma:**
 - `*.bg.*` → Fill
@@ -268,28 +273,76 @@ Esta familia es la que hace que “mi botón cambie solo si cambio el primary”
 |`action.primary.outlined.text.hover`|`#4338ca`|`#c7d2fe`|Text|—|
 
 
-#### Tabla: `action.accent.*`
+#### Tabla: `action.secondary.*`
 |Token|Light value|Dark value|Figma scope|Uso|
 |---|---|---|---|---|
-|`action.accent.filled.bg.default`|`#e11d48`|`#fb7185`|Fill (Frame/Shape)|—|
-|`action.accent.filled.bg.disabled`|`#d1d5db`|`#374151`|Fill (Frame/Shape)|—|
-|`action.accent.filled.bg.disabledLight`|`#e5e7eb`|`#1f2937`|Fill (Frame/Shape)|—|
-|`action.accent.filled.bg.hover`|`#be123c`|`#fda4af`|Fill (Frame/Shape)|—|
-|`action.accent.filled.bg.pressed`|`#9f1239`|`#f43f5e`|Fill (Frame/Shape)|—|
-|`action.accent.filled.text`|`#ffffff`|`#111827`|All|—|
-|`action.accent.outlined.bg.default`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|—|
-|`action.accent.outlined.bg.disabled`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|—|
-|`action.accent.outlined.bg.focus`|`#ffe4e6`|`#881337`|Fill (Frame/Shape)|—|
-|`action.accent.outlined.bg.hover`|`#fff1f2`|`#4c0519`|Fill (Frame/Shape)|—|
-|`action.accent.outlined.bg.pressed`|`#fecdd3`|`#4c0519`|Fill (Frame/Shape)|—|
-|`action.accent.outlined.border.default`|`#e11d48`|`#fda4af`|Stroke|—|
-|`action.accent.outlined.border.disabled`|`#d1d5db`|`#374151`|Stroke|—|
-|`action.accent.outlined.border.focus`|`#9f1239`|`#fecdd3`|Stroke|—|
-|`action.accent.outlined.border.hover`|`#be123c`|`#fecdd3`|Stroke|—|
-|`action.accent.outlined.text.default`|`#e11d48`|`#fda4af`|Text|—|
-|`action.accent.outlined.text.disabled`|`#9ca3af`|`#6b7280`|Text|—|
-|`action.accent.outlined.text.focus`|`#9f1239`|`#fecdd3`|Text|—|
-|`action.accent.outlined.text.hover`|`#be123c`|`#fecdd3`|Text|—|
+|`action.secondary.filled.bg.default`|`#e11d48`|`#fb7185`|Fill (Frame/Shape)|—|
+|`action.secondary.filled.bg.disabled`|`#d1d5db`|`#374151`|Fill (Frame/Shape)|—|
+|`action.secondary.filled.bg.disabledLight`|`#e5e7eb`|`#1f2937`|Fill (Frame/Shape)|—|
+|`action.secondary.filled.bg.hover`|`#be123c`|`#fda4af`|Fill (Frame/Shape)|—|
+|`action.secondary.filled.bg.pressed`|`#9f1239`|`#f43f5e`|Fill (Frame/Shape)|—|
+|`action.secondary.filled.text`|`#ffffff`|`#111827`|All|—|
+|`action.secondary.outlined.bg.default`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|—|
+|`action.secondary.outlined.bg.disabled`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|—|
+|`action.secondary.outlined.bg.focus`|`#ffe4e6`|`#881337`|Fill (Frame/Shape)|—|
+|`action.secondary.outlined.bg.hover`|`#fff1f2`|`#4c0519`|Fill (Frame/Shape)|—|
+|`action.secondary.outlined.bg.pressed`|`#fecdd3`|`#4c0519`|Fill (Frame/Shape)|—|
+|`action.secondary.outlined.border.default`|`#e11d48`|`#fda4af`|Stroke|—|
+|`action.secondary.outlined.border.disabled`|`#d1d5db`|`#374151`|Stroke|—|
+|`action.secondary.outlined.border.focus`|`#9f1239`|`#fecdd3`|Stroke|—|
+|`action.secondary.outlined.border.hover`|`#be123c`|`#fecdd3`|Stroke|—|
+|`action.secondary.outlined.text.default`|`#e11d48`|`#fda4af`|Text|—|
+|`action.secondary.outlined.text.disabled`|`#9ca3af`|`#6b7280`|Text|—|
+|`action.secondary.outlined.text.focus`|`#9f1239`|`#fecdd3`|Text|—|
+|`action.secondary.outlined.text.hover`|`#be123c`|`#fecdd3`|Text|—|
+
+
+#### Tabla: `action.neutral.*`
+|Token|Light value|Dark value|Figma scope|Uso|
+|---|---|---|---|---|
+|`action.neutral.filled.bg.default`|`#f3f4f6`|`#374151`|Fill (Frame/Shape)|Fondo filled neutral default.|
+|`action.neutral.filled.bg.disabled`|`#e5e7eb`|`#4b5563`|Fill (Frame/Shape)|Filled neutral disabled.|
+|`action.neutral.filled.bg.disabledLight`|`#f3f4f6`|`#374151`|Fill (Frame/Shape)|Filled neutral disabled (light variant).|
+|`action.neutral.filled.bg.hover`|`#e5e7eb`|`#4b5563`|Fill (Frame/Shape)|Filled neutral hover.|
+|`action.neutral.filled.bg.pressed`|`#d1d5db`|`#1f2937`|Fill (Frame/Shape)|Filled neutral pressed.|
+|`action.neutral.filled.text`|`#111827`|`#f9fafb`|All|Texto sobre filled neutral.|
+|`action.neutral.outlined.bg.default`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|Outlined neutral default bg.|
+|`action.neutral.outlined.bg.disabled`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|Outlined neutral disabled bg.|
+|`action.neutral.outlined.bg.focus`|`#e5e7eb`|`#1f2937`|Fill (Frame/Shape)|Outlined neutral focus bg.|
+|`action.neutral.outlined.bg.hover`|`#f3f4f6`|`#111827`|Fill (Frame/Shape)|Outlined neutral hover bg.|
+|`action.neutral.outlined.bg.pressed`|`#e5e7eb`|`#111827`|Fill (Frame/Shape)|Outlined neutral pressed bg.|
+|`action.neutral.outlined.border.default`|`#d1d5db`|`#374151`|Stroke|Outlined neutral border default.|
+|`action.neutral.outlined.border.disabled`|`#e5e7eb`|`#1f2937`|Stroke|Outlined neutral border disabled.|
+|`action.neutral.outlined.border.focus`|`#6b7280`|`#6b7280`|Stroke|Outlined neutral border focus.|
+|`action.neutral.outlined.border.hover`|`#9ca3af`|`#4b5563`|Stroke|Outlined neutral border hover.|
+|`action.neutral.outlined.text.default`|`#374151`|`#e5e7eb`|Text|Outlined neutral text default.|
+|`action.neutral.outlined.text.disabled`|`#9ca3af`|`#6b7280`|Text|Outlined neutral text disabled.|
+|`action.neutral.outlined.text.focus`|`#111827`|`#f9fafb`|Text|Outlined neutral text focus.|
+|`action.neutral.outlined.text.hover`|`#1f2937`|`#f3f4f6`|Text|Outlined neutral text hover.|
+
+
+#### Tabla: `action.danger.*`
+|Token|Light value|Dark value|Figma scope|Uso|
+|---|---|---|---|---|
+|`action.danger.filled.bg.default`|`#dc2626`|`#f87171`|Fill (Frame/Shape)|Fondo filled danger default.|
+|`action.danger.filled.bg.disabled`|`#d1d5db`|`#374151`|Fill (Frame/Shape)|Filled danger disabled.|
+|`action.danger.filled.bg.disabledLight`|`#e5e7eb`|`#1f2937`|Fill (Frame/Shape)|Filled danger disabled (light variant).|
+|`action.danger.filled.bg.hover`|`#b91c1c`|`#fca5a5`|Fill (Frame/Shape)|Filled danger hover.|
+|`action.danger.filled.bg.pressed`|`#991b1b`|`#ef4444`|Fill (Frame/Shape)|Filled danger pressed.|
+|`action.danger.filled.text`|`#ffffff`|`#111827`|All|Texto sobre filled danger.|
+|`action.danger.outlined.bg.default`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|Outlined danger default bg.|
+|`action.danger.outlined.bg.disabled`|`#f9fafb`|`#030712`|Fill (Frame/Shape)|Outlined danger disabled bg.|
+|`action.danger.outlined.bg.focus`|`#fee2e2`|`#7f1d1d`|Fill (Frame/Shape)|Outlined danger focus bg.|
+|`action.danger.outlined.bg.hover`|`#fef2f2`|`#450a0a`|Fill (Frame/Shape)|Outlined danger hover bg.|
+|`action.danger.outlined.bg.pressed`|`#fecaca`|`#450a0a`|Fill (Frame/Shape)|Outlined danger pressed bg.|
+|`action.danger.outlined.border.default`|`#dc2626`|`#fca5a5`|Stroke|Outlined danger border default.|
+|`action.danger.outlined.border.disabled`|`#d1d5db`|`#374151`|Stroke|Outlined danger border disabled.|
+|`action.danger.outlined.border.focus`|`#991b1b`|`#fecaca`|Stroke|Outlined danger border focus.|
+|`action.danger.outlined.border.hover`|`#b91c1c`|`#fecaca`|Stroke|Outlined danger border hover.|
+|`action.danger.outlined.text.default`|`#dc2626`|`#fca5a5`|Text|Outlined danger text default.|
+|`action.danger.outlined.text.disabled`|`#9ca3af`|`#6b7280`|Text|Outlined danger text disabled.|
+|`action.danger.outlined.text.focus`|`#991b1b`|`#fecaca`|Text|Outlined danger text focus.|
+|`action.danger.outlined.text.hover`|`#b91c1c`|`#fecaca`|Text|Outlined danger text hover.|
 
 
 ---
@@ -428,7 +481,7 @@ No agregues tokens si:
 ### Checklist rápido de calidad (antes de “dar por terminado”)
 
 - [ ] ¿Los componentes usan semánticos y no primitives?
-- [ ] ¿Primary/Accent funcionan en light y dark (contraste)?
+- [ ] ¿Primary/Secondary/Neutral/Danger funcionan en light y dark (contraste)?
 - [ ] ¿Hay tokens duplicados con nombres distintos para el mismo rol?
 - [ ] ¿Los estados `default/hover/active/disabled/focus` están completos para `action.primary`?
 - [ ] ¿Los errores/warnings tienen `bg.tertiary` legible y borde visible?
