@@ -1,6 +1,6 @@
 ---
 title: Button
-sidebar_position: 20
+sidebar_position: 1
 ---
 
 # Button
