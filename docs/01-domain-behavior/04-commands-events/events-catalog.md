@@ -41,25 +41,25 @@ description: Catálogo inicial de comandos/eventos mencionados en Domain Behavio
 
 > **RequestBooking vs CreateBooking — Distinción importante**
 >
-> La elección del comando depende del flag `Listing.booking_rules.confirmation_required`:
+> La elección del comando depende de `Listing.confirmationPolicy`:
 >
-> | `confirmation_required` | Comando a usar | Booking inicial | Evento emitido |
+> | `confirmationPolicy` | Comando a usar | Booking inicial | Evento emitido |
 > |---|---|---|---|
-> | `true` | `RequestBooking` | `Requested` (espera aprobación) | `BookingRequested` |
-> | `false` | `CreateBooking` | `Confirmed` (auto-confirmado) | `BookingCreated` |
+> | `ManualConfirm` \| `RequestOnly` | `RequestBooking` | `Pending` (espera aprobación) | `BookingRequested` |
+> | `AutoConfirm` | `CreateBooking` | `Confirmed` (auto-confirmado) | `BookingCreated` |
 >
 > No son sinónimos: representan flujos distintos con estados de inicio diferentes.
 
 **Commands**
-- `RequestBooking` — cuando `confirmation_required = true`; el proveedor debe confirmar manualmente.
-- `CreateBooking` — cuando `confirmation_required = false`; confirmación automática inmediata.
-- `ConfirmBooking` — el proveedor aprueba un booking en estado `Requested`.
-- `CancelBooking` — cancela desde cualquier estado activo (`Requested` o `Confirmed`).
+- `RequestBooking` — cuando `confirmationPolicy = ManualConfirm | RequestOnly`; el proveedor debe confirmar manualmente.
+- `CreateBooking` — cuando `confirmationPolicy = AutoConfirm`; confirmación automática inmediata.
+- `ConfirmBooking` — el proveedor aprueba un booking en estado `Pending`.
+- `CancelBooking` — cancela desde cualquier estado activo (`Pending` o `Confirmed`).
 - `MarkNoShow` — marca no-show desde estado `Confirmed`.
 - `CompleteBooking` — cierra el booking desde estado `Confirmed`.
 
 **Events**
-- `BookingRequested` — booking creado, pendiente de confirmación manual.
+- `BookingRequested` — booking creado en estado `Pending`, pendiente de confirmación manual.
 - `BookingCreated` — booking creado y auto-confirmado.
 - `BookingConfirmed` — proveedor aprobó un `BookingRequested`.
 - `BookingCancelled` — cancelado (desde `Requested` o `Confirmed`).

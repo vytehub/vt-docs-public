@@ -59,4 +59,4 @@ description: Desde un Business crea/pulsa un Listing, configura Timeline y el si
 ## Edge Cases
 - Timeline con conflictos: slots se recortan o se marcan como no disponibles.
 - Timezone: cálculos de slots deben usar el timezone del Place/Timeline (no “UTC a ojo”).
-- Listing Published pero sin slots: permitido (para “on request”) o bloqueado (decisión de producto). **NEEDS CLARIFICATION**.
+- Listing Published pero sin slots: **permitido** — el Business debe configurar disponibilidad en su Timeline. Si no hay Timeline configurado, el Listing se publica sin Slots proyectados. (on-request como modo distinto queda fuera de scope v1)

@@ -56,10 +56,8 @@ Business navega a **Dashboard → Catálogo → "Nuevo Service"**.
 1. Business abre la sección Catálogo y pulsa "Nuevo Service".
 2. Sistema crea un `Service` en estado **Draft** (asociado al `profileId`).
 3. Business completa el formulario:
-   - **Requeridos para activar:** `name`, `durationMin` (> 0), `basePrice` (≥ 0),
-     `location`, `confirmationPolicy`.
-   - **Opcionales:** `description`, `preBufferMin`, `postBufferMin`,
-     `intakeForm`, `tags`, `baseMedia`.
+   - **Requeridos para activar:** `name`, `durationMin` (> 0), `basePrice` (≥ 0).
+   - **Opcionales:** `description`, `preBufferMin`, `postBufferMin`, `tags`.
 4. Business guarda en Draft (puede guardar parcialmente sin activar).
 5. Business pulsa **"Activar"**.
 6. Sistema valida que todos los campos requeridos están completos y válidos.
@@ -92,12 +90,12 @@ Service {
   description:          string?
   durationMin:          int                -- > 0; requerido para Active
   basePrice:            decimal            -- ≥ 0; requerido para Active
-  location:             NEEDS-CLARIFICATION -- PlaceId ref o free-text?
-  confirmationPolicy:   ConfirmationPolicy -- requerido para Active; NEEDS-CLARIFICATION valores
   preBufferMin:         int?
   postBufferMin:        int?
-  intakeForm:           FormDefinition?    -- NEEDS-CLARIFICATION estructura
   tags:                 Tag[]              -- taxonomía global curada + custom limitado
+  -- location: no existe en Service; placeId vive en Listing (decisión v1)
+  -- confirmationPolicy: vive en Listing; Service es puramente operativo (decisión v1)
+  -- intakeForm: vive en Listing (decisión v1)
   createdAt:            DateTime
   updatedAt:            DateTime
   -- baseMedia: no existe en Service; la media pertenece al Listing (ver decisión v1)
@@ -139,17 +137,16 @@ Service {
 2. `name` no puede ser vacío.
 3. `durationMin` debe ser > 0 para activar.
 4. `basePrice` debe ser ≥ 0 para activar.
-5. `location` y `confirmationPolicy` son requeridos para activar.
-6. Un Service no puede eliminarse si tiene Bookings asociados.
-7. Cambios en Service Active no modifican Bookings existentes ni recalculan Slots retroactivamente.
-8. Solo Services Active pueden tener nuevos Listings creados sobre ellos.
+5. Un Service no puede eliminarse si tiene Bookings asociados.
+6. Cambios en Service Active no modifican Bookings existentes ni recalculan Slots retroactivamente.
+7. Solo Services Active pueden tener nuevos Listings creados sobre ellos.
 
 ---
 
 ## 11. Outputs
 
 - `Service` en estado **Active**, asociado al Profile del Business.
-- Service Detail visible con CTA **"Crear Listing"** (entrada al Flow 01).
+- Service Detail visible con CTA **"Crear Listing"** (entrada al Flow 06).
 
 ---
 
@@ -195,13 +192,7 @@ Service {
 
 ## 14. NEEDS-CLARIFICATION
 
-- **`location`:** ¿es un `PlaceId` (referencia a entidad Place ya existente)
-  o un free-text / valor embebido? Impacta el modelo de datos y el flujo de UI.
-- **`confirmationPolicy`:** valores exactos permitidos
-  (ej: `AutoConfirm`, `ManualConfirm`, `RequestOnly`…).
-- **`intakeForm`:** estructura de `FormDefinition`
-  (tipos de campo, validaciones, relación con el Form BC documentado en `03.forms/index.md`).
 - **Tags:** cantidad máxima de tags custom permitidos por Service.
 - **Módulo Offering:** ¿se renombra, convive con Catalog, o se refactoriza?
-  Impacta migraciones y módulos existentes.
+  Impacta migraciones y módulos existentes. Ver ADR-0003.
 - **Toolkit components:** pendiente inventario de `vt-toolkit` para formulario.

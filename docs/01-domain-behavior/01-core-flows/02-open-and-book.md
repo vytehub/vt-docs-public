@@ -12,7 +12,7 @@ description: Un Guest/Usuario abre un listing (o slot) y confirma una reserva qu
 
 ## Preconditions
 - Listing está **Published** y visible para el usuario (channels/visibility + privacy).
-- Existe disponibilidad proyectada (Slots) o el listing permite “on request”. **NEEDS CLARIFICATION**
+- Existe disponibilidad proyectada (Slots). (on-request fuera de scope v1)
 - Se conoce Place/timezone para interpretación del horario.
 
 ## Main Flow (paso a paso)

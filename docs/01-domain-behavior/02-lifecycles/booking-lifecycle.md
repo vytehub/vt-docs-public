@@ -9,7 +9,7 @@ description: Estados del Booking, transiciones, reglas de cada transición y efe
 
 | Estado | Descripción |
 |---|---|
-| **Requested** | El usuario solicitó la reserva. El slot está tentativo (soft-hold). Puede requerir confirmación manual del proveedor (`confirmation_required = true`) o auto-confirmarse. |
+| **Pending** | El usuario solicitó la reserva. El slot está en soft-hold. Ocurre cuando `Listing.confirmationPolicy = ManualConfirm \| RequestOnly`: el proveedor debe confirmar manualmente. Si `confirmationPolicy = AutoConfirm`, el booking pasa directamente a **Confirmed**. |
 | **Confirmed** | La reserva está confirmada. El slot está bloqueado. Se crea (o confirma) el Event asociado en el Timeline. |
 | **Cancelled** | La reserva fue cancelada por el usuario, el proveedor, o el sistema. El slot queda disponible nuevamente (re-proyección). |
 | **Completed** | El servicio ocurrió y cerró. Estado terminal positivo. |
@@ -21,9 +21,10 @@ description: Estados del Booking, transiciones, reglas de cada transición y efe
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Requested : RequestBooking / CreateBooking
-  Requested --> Confirmed : ConfirmBooking (manual o auto)
-  Requested --> Cancelled : CancelBooking
+  [*] --> Pending : RequestBooking (ManualConfirm / RequestOnly)
+  [*] --> Confirmed : CreateBooking (AutoConfirm)
+  Pending --> Confirmed : ConfirmBooking (manual)
+  Pending --> Cancelled : CancelBooking
   Confirmed --> Completed : CompleteBooking
   Confirmed --> Cancelled : CancelBooking
   Confirmed --> NoShow : MarkNoShow
@@ -36,22 +37,28 @@ stateDiagram-v2
 
 ## Reglas por transición
 
-### `[*] → Requested` (via `RequestBooking` o `CreateBooking`)
+### `[*] → Pending` (via `RequestBooking`)
 
 - Se evalúa la disponibilidad del slot en el momento de la solicitud.
-- Si `Listing.booking_rules.confirmation_required = false`: el booking pasa directamente a **Confirmed** (evento `BookingCreated`).
-- Si `Listing.booking_rules.confirmation_required = true`: el booking queda en **Requested** (evento `BookingRequested`); el proveedor debe confirmar manualmente.
-- El slot entra en soft-hold durante el estado Requested para evitar doble-booking.
+- Ocurre cuando `Listing.confirmationPolicy = ManualConfirm | RequestOnly`.
+- El slot entra en soft-hold durante el estado Pending para evitar doble-booking.
+- Evento emitido: `BookingRequested`.
 - Ver: `RequestBooking vs CreateBooking` — `04-commands-events/events-catalog.md`.
 
-### `Requested → Confirmed` (via `ConfirmBooking`)
+### `[*] → Confirmed` (via `CreateBooking`)
 
-- El proveedor aprueba manualmente la solicitud, o el sistema la auto-confirma si no requiere confirmación.
+- Ocurre cuando `Listing.confirmationPolicy = AutoConfirm`: confirmación inmediata.
+- Se crea el **Event** en el Timeline del proveedor.
+- Evento emitido: `BookingCreated`.
+
+### `Pending → Confirmed` (via `ConfirmBooking`)
+
+- El proveedor aprueba manualmente la solicitud.
 - Se crea el **Event** en el Timeline del proveedor (bloquea disponibilidad).
 - Se disparan notificaciones al usuario y al proveedor.
 - Evento emitido: `BookingConfirmed`.
 
-### `Requested → Cancelled` (via `CancelBooking`)
+### `Pending → Cancelled` (via `CancelBooking`)
 
 - El usuario cancela antes de que el proveedor confirme, o el proveedor rechaza.
 - El soft-hold se libera; el slot vuelve a estar disponible.
@@ -84,7 +91,7 @@ stateDiagram-v2
 
 - Un Booking **Confirmed** debe tener un Event asociado en el Timeline correspondiente.
 - Un Booking **Cancelled** o **Completed** o **NoShow** no puede transicionar a ningún otro estado.
-- La disponibilidad del slot siempre refleja el estado actual de los Bookings activos (`Requested` + `Confirmed`).
+- La disponibilidad del slot siempre refleja el estado actual de los Bookings activos (`Pending` + `Confirmed`).
 
 ---
 
