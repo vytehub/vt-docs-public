@@ -10,12 +10,17 @@ These are **design-level contracts** — the canonical source of truth for what 
 
 | File | Bounded Context |
 |---|---|
-| `users.md` | Foundation — Users |
-| `offering.md` | Offer — Catalog & Listings |
+| `users.md` | Foundation — Users & Onboarding |
+| `catalog.md` | Catalog — Services & Products |
+| `listing.md` | Listing — Offer configuration & publication |
+| `places.md` | Supply — Places (Physical, Online, Community) |
 | `timelines.md` | Supply — Timelines & Slots |
-| `social.md` | Social & Discovery |
-| `booking.md` | Booking flow (cross-context) |
-| `notifications.md` | Communication |
+| `agreements.md` | Foundation — Agreements (Sharing, Delegation, Partner) |
+| `booking.md` | Booking — Lifecycle (cross-context) |
+| `policies.md` | Policies — Cancellation, Reschedule, NoShow |
+| `social.md` | Social — Profiles, Follow, Feed, Posts |
+| `search.md` | Search & Discovery — Listings, Autocomplete, Discover |
+| `notifications.md` | Communication — Notifications & Preferences |
 
 ## Conventions
 

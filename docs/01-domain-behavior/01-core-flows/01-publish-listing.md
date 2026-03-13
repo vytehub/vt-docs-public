@@ -1,9 +1,20 @@
 ---
 title: Flow 01 - Publicar Listing y habilitar Slots
 description: Desde un Business crea/pulsa un Listing, configura Timeline y el sistema proyecta Slots para booking.
+status: deprecated
+deprecated_by: "Flows 05, 06, 08"
 ---
 
-# Flow 01 — Publicar Listing y habilitar Slots
+> ⚠️ **DEPRECATED** — Este flow macro fue descompuesto en:
+> - **Flow 05** — Crear Service (`05-create-service.md`)
+> - **Flow 06** — Crear Listing (`06-crear-listing.md`)
+> - **Flow 08** — Configurar Timeline (`08-configurar-timeline.md`)
+>
+> Conservado como referencia histórica. No usar como guía de implementación.
+
+---
+
+# Flow 01 — Publicar Listing y habilitar Slots (DEPRECATED)
 
 ## Resumen
 - **Goal:** que un negocio pueda publicar una oferta (Listing) y exponer disponibilidad proyectada (Slots) basada en su Timeline + reglas.

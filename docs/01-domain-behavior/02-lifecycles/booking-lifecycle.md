@@ -87,11 +87,44 @@ stateDiagram-v2
 
 ---
 
+## Reschedule — Sub-lifecycle de RescheduleRecord
+
+Un Booking **Confirmed** puede tener asociado como máximo un `RescheduleRecord` activo.
+El Booking en sí no cambia de estado durante un reschedule hasta que el slot se confirma.
+
+### Estados de RescheduleRecord
+
+| Estado | Descripción |
+|---|---|
+| **Pending** | El actor solicitante propuso un nuevo slot. Espera confirmación del otro actor. |
+| **Confirmed** | El otro actor aceptó el nuevo slot. El Booking se actualiza al nuevo slot. |
+| **Rejected** | El otro actor rechazó la propuesta. El Booking permanece en el slot original. |
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending : ProposeReschedule (client o provider)
+  Pending --> Confirmed : ConfirmReschedule (actor opuesto)
+  Pending --> Rejected : RejectReschedule (actor opuesto)
+  Confirmed --> [*]
+  Rejected --> [*]
+```
+
+**Reglas:**
+- Solo puede haber **un** `RescheduleRecord` en estado `Pending` por Booking a la vez.
+- `ConfirmReschedule` solo puede ejecutarlo el actor **opuesto** al que propuso.
+- Al confirmar: el slot del Booking se actualiza, el Event en el Timeline se reproyecta.
+- Al rechazar: el Booking permanece en el slot original; se puede proponer un nuevo reschedule.
+- Ver: Flow 11 — Cancelar, Reagendar y Policies.
+
+---
+
 ## Invariantes
 
 - Un Booking **Confirmed** debe tener un Event asociado en el Timeline correspondiente.
 - Un Booking **Cancelled** o **Completed** o **NoShow** no puede transicionar a ningún otro estado.
 - La disponibilidad del slot siempre refleja el estado actual de los Bookings activos (`Pending` + `Confirmed`).
+- A lo sumo un `RescheduleRecord` en estado **Pending** por Booking (invariante de Flow 11).
+- `ConfirmReschedule` solo puede ejecutarlo el actor opuesto al que inició la propuesta.
 
 ---
 
@@ -99,5 +132,5 @@ stateDiagram-v2
 
 - Booking rules del Listing: `00-core-domain/04-bounded-contexts/03.Offer - Catalog & Listings/02.listing/05.booking_rules.md`
 - RequestBooking vs CreateBooking: `01-domain-behavior/04-commands-events/events-catalog.md`
-- Políticas de cancelación/reschedule/no-show: `04-bounded-contexts/07-policies/` *(P0 — pendiente)*
+- Políticas de cancelación/reschedule/no-show: `04-bounded-contexts/07-policies/` — ver Flow 11
 - Incentivos anti-cancelación: `02-product-variants/use-cases/incentivos-anticancelacion-noshow.md`
