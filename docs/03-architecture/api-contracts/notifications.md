@@ -1,28 +1,32 @@
 # API Contracts — Notifications
 
 Base path: `/api/v1`
-Module: `Vt.Modules.Communication` *(a definir — puede ser parte de Users o módulo propio)*
+Module: `Vt.Modules.Communication` *(planificado — modulo propio, a implementar)*
 
 > Cubre notificaciones in-app, preferencias de canal (email, push) y registro de dispositivos.
-> Los eventos que disparan notificaciones están documentados en `docs/vt-docs/public/01-domain-behavior/02-system-behaviors/notifications-reminders.md`.
+> Los eventos que disparan notificaciones estan documentados en `docs/vt-docs/public/01-domain-behavior/03-cross-cutting/notifications-reminders.md`.
+>
+> Ningun endpoint de este modulo esta implementado todavia. Este documento es el contrato de diseno target.
 
 ---
 
 ## Notifications
 
-### `GET /notifications` 🚧
+### `GET /notifications`
 
-Lista las notificaciones del usuario autenticado. Paginadas, más recientes primero.
+Lista las notificaciones del usuario autenticado. Paginadas, mas recientes primero.
+
+**Auth:** requerida (usuario autenticado)
 
 **Query params:** `?unreadOnly=false&page=1&pageSize=20`
 
-**Response:**
+**Response:** `200 OK`
 ```json
 {
   "items": [
     {
       "id": "uuid",
-      "type": "booking_confirmed | booking_cancelled | follow_request | follow_accepted | post_reaction | reminder | system",
+      "type": "booking_confirmed | booking_cancelled | booking_requested | booking_completed | booking_no_show | booking_reminder | reschedule_proposed | reschedule_confirmed | reschedule_rejected | follow_request | follow_approved | post_reaction | listing_published | listing_shared | system",
       "title": "string",
       "body": "string",
       "read": false,
@@ -42,9 +46,11 @@ Lista las notificaciones del usuario autenticado. Paginadas, más recientes prim
 
 ---
 
-### `POST /notifications/:notificationId/read` 🚧
+### `POST /notifications/{notificationId}/read`
 
-Marca una notificación como leída.
+Marca una notificacion como leida.
+
+**Auth:** requerida
 
 **Command dispatched:** `MarkNotificationReadCommand`
 
@@ -52,9 +58,11 @@ Marca una notificación como leída.
 
 ---
 
-### `POST /notifications/read-all` 🚧
+### `POST /notifications/read-all`
 
-Marca todas las notificaciones del usuario como leídas.
+Marca todas las notificaciones del usuario como leidas.
+
+**Auth:** requerida
 
 **Command dispatched:** `MarkAllNotificationsReadCommand`
 
@@ -62,9 +70,11 @@ Marca todas las notificaciones del usuario como leídas.
 
 ---
 
-### `DELETE /notifications/:notificationId` 🚧
+### `DELETE /notifications/{notificationId}`
 
-Elimina una notificación de la bandeja del usuario.
+Elimina una notificacion de la bandeja del usuario.
+
+**Auth:** requerida
 
 **Response:** `204 No Content`
 
@@ -72,29 +82,37 @@ Elimina una notificación de la bandeja del usuario.
 
 ## Notification Types
 
-| Type | Trigger Event | Actor |
-|------|--------------|-------|
-| `booking_confirmed` | `BookingConfirmed` | Attendee |
-| `booking_cancelled` | `BookingCancelled` | Attendee + Provider |
-| `booking_requested` | `BookingRequested` | Provider |
-| `booking_reminder` | Scheduled job | Attendee + Provider |
-| `booking_completed` | `BookingCompleted` | Attendee |
-| `booking_no_show` | `BookingNoShow` | Attendee |
-| `follow_request` | `FollowRequested` | Target Profile |
-| `follow_accepted` | `FollowAccepted` | Requester |
-| `post_reaction` | `ReactionAdded` | Post owner |
-| `listing_published` | `ListingPublished` | Followers del Profile |
-| `system` | Internal | User |
+| Type | Trigger Event | Source module | Destinatario |
+|------|--------------|---------------|-------------|
+| `booking_confirmed` | `BookingConfirmed` | Booking | Attendee |
+| `booking_cancelled` | `BookingCancelled` | Booking | Attendee + Provider |
+| `booking_requested` | `BookingRequested` | Booking | Provider |
+| `booking_reminder` | Scheduled job | Booking | Attendee + Provider |
+| `booking_completed` | `BookingCompleted` | Booking | Attendee |
+| `booking_no_show` | `BookingNoShow` | Booking | Attendee |
+| `reschedule_proposed` | `RescheduleProposed` | Booking | Actor opuesto al proponente |
+| `reschedule_confirmed` | `RescheduleConfirmed` | Booking | Ambos actores |
+| `reschedule_rejected` | `RescheduleRejected` | Booking | Proponente |
+| `follow_request` | `FollowRequestedDomainEvent` | Social | Followee (target del request) |
+| `follow_approved` | `FollowAcceptedDomainEvent` | Social | Follower (quien envio el request) |
+| `post_reaction` | `ReactionAddedDomainEvent` | Social | Author del Post |
+| `listing_published` | `ListingPublished` | Listing | Seguidores del Profile author |
+| `listing_shared` | `ListingShared` | Social | Owner del Listing |
+| `system` | Interno | Any | Usuario |
+
+> `follow_approved` reemplaza a `follow_accepted` para alinear con el termino canonico `Approve` usado en el dominio Social (`ApproveFollowCommand`, `FollowAcceptedDomainEvent`).
 
 ---
 
 ## Preferences
 
-### `GET /notifications/preferences` 🚧
+### `GET /notifications/preferences`
 
-Retorna las preferencias de notificación del usuario autenticado.
+Retorna las preferencias de notificacion del usuario autenticado.
 
-**Response:**
+**Auth:** requerida
+
+**Response:** `200 OK`
 ```json
 {
   "email": {
@@ -119,9 +137,11 @@ Retorna las preferencias de notificación del usuario autenticado.
 
 ---
 
-### `PATCH /notifications/preferences` 🚧
+### `PATCH /notifications/preferences`
 
-Actualiza las preferencias de notificación.
+Actualiza las preferencias de notificacion. Campos no enviados no se modifican.
+
+**Auth:** requerida
 
 **Request (partial):**
 ```json
@@ -138,15 +158,17 @@ Actualiza las preferencias de notificación.
 
 **Command dispatched:** `UpdateNotificationPreferencesCommand`
 
-**Response:** `200 OK` con las preferencias actualizadas.
+**Response:** `200 OK` con las preferencias actualizadas (mismo shape que GET).
 
 ---
 
 ## Push Device Registration
 
-### `POST /notifications/devices` 🚧
+### `POST /notifications/devices`
 
 Registra un dispositivo para recibir push notifications.
+
+**Auth:** requerida
 
 **Request:**
 ```json
@@ -161,8 +183,10 @@ Registra un dispositivo para recibir push notifications.
 
 ---
 
-### `DELETE /notifications/devices/:deviceId` 🚧
+### `DELETE /notifications/devices/{deviceId}`
 
-Desregistra un dispositivo (logout, cambio de usuario).
+Desregistra un dispositivo (al hacer logout o cambio de usuario).
+
+**Auth:** requerida
 
 **Response:** `204 No Content`

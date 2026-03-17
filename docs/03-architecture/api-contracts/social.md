@@ -1,255 +1,286 @@
 # API Contracts — Social
 
 Base path: `/api/v1`
-Module: `Vt.Modules.Social` *(nuevo — a implementar)*
+Module: `Vt.Modules.Social`
 Schema: `social`
 
-> Cubre Profiles, Follow graph, Posts y Reactions.
+> Cubre el Follow graph y Block. Profiles, Posts, Feed y Reactions son endpoints planificados (no implementados todavia).
 > Ver flows `03-follow-and-feed.md` y spec pack `DRAFT-social-feed`.
-> Visibilidad controlada por `VisibilityMode`: `None | BusyOnly | BusyOnlyDetails` (módulo Access).
+> Visibilidad de Profile controlada por `ProfileVisibility`: `Public | Private` (modulo Social).
 
 ---
 
-## Profiles
+## Implementation status
 
-### `GET /profiles/:profileId` 🚧
+| Area | Status |
+|------|--------|
+| Follow graph | Implementado |
+| Block/Unblock | Implementado |
+| Follow status query | Implementado |
+| Profiles (GET/PATCH) | Planificado |
+| Mute/Unmute | Planificado |
+| Posts & Feed | Planificado |
+| Reactions | Planificado |
 
-Retorna un Profile. Respuesta varía según `VisibilityMode` del actor autenticado.
+---
 
-**[public — visibility-aware]**
+## Follow Graph
 
-**Response (full — BusyOnlyDetails o seguidor):**
+### `POST /social/follows/{targetUserId}`
+
+Envia un Follow Request al usuario target.
+
+**Auth:** `Social.Follow`
+
+- Si el target tiene `Visibility = Public` → acepta automaticamente → emite `FollowRequestedDomainEvent` + `FollowAcceptedDomainEvent`
+- Si el target tiene `Visibility = Private` → queda en `Requested` → emite solo `FollowRequestedDomainEvent`
+
+**Command dispatched:** `FollowUserCommand(ActorId, TargetUserId)`
+**Events emitted:** `FollowRequestedDomainEvent` | `FollowRequestedDomainEvent` + `FollowAcceptedDomainEvent`
+
+**Response:** `200 OK` (sin body)
+
+**Errors:**
+- `400` — `follow.follower_required` | `follow.followee_required` | `follow.cannot_follow_self`
+- `403` — token sin permiso `Social.Follow`
+
+---
+
+### `DELETE /social/follows/{otherUserId}`
+
+Deja de seguir a un usuario o cancela un Follow Request pendiente. Puede ser ejecutado por el follower o el followee (remove en ambas direcciones).
+
+**Auth:** `Social.ManageFollowers`
+
+**Command dispatched:** `RemoveFollowCommand(ActorId, OtherUserId)`
+**Event emitted:** `FollowRemovedDomainEvent` — incluye campo `RemovedBy`
+
+**Response:** `200 OK` (sin body)
+
+**Errors:**
+- `400` — `follow.cannot_remove_while_blocked` | `follow.only_participants_can_modify`
+
+---
+
+### `POST /social/follows/{followerUserId}/approve`
+
+El followee aprueba un Follow Request pendiente del usuario `followerUserId`.
+
+**Auth:** `Social.ManageFollowers`
+
+**Command dispatched:** `ApproveFollowCommand(ActorId, FollowerUserId)`
+**Event emitted:** `FollowAcceptedDomainEvent`
+
+**Response:** `200 OK` (sin body)
+
+**Errors:**
+- `400` — `follow.only_followee_can_approve_or_reject` | `follow.follow_is_blocked` | `follow.not_requested`
+
+---
+
+### `POST /social/follows/{followerUserId}/reject`
+
+El followee rechaza un Follow Request pendiente del usuario `followerUserId`.
+
+**Auth:** `Social.ManageFollowers`
+
+**Command dispatched:** `RejectFollowCommand(ActorId, FollowerUserId)`
+**Event emitted:** `FollowRejectedDomainEvent`
+
+**Response:** `200 OK` (sin body)
+
+**Errors:**
+- `400` — `follow.only_followee_can_approve_or_reject` | `follow.follow_is_blocked`
+
+---
+
+### `GET /social/follows/{targetUserId}/status`
+
+Retorna el estado de la relacion de Follow entre el usuario autenticado y `targetUserId`.
+
+**Auth:** `Social.View`
+
+**Query dispatched:** `GetFollowStatusQuery(FollowerId, FolloweeId)`
+
+**Response:** `200 OK`
+```json
+{
+  "followerId": "uuid",
+  "followeeId": "uuid",
+  "status": 1,
+  "blockedBy": "uuid | null"
+}
+```
+
+> `status` es un entero: `1 = Requested`, `2 = Accepted`, `3 = Blocked`.
+> `blockedBy` es el `userId` que ejecuto el bloqueo (presente solo cuando `status = 3`).
+
+---
+
+### `GET /social/followers/{userId}`
+
+Lista los seguidores del usuario `userId`. Solo retorna follows en estado `Accepted`.
+
+**Auth:** `Social.View`
+
+**Query params:** `?limit=50&cursor=ISO8601_datetime`
+
+> Paginacion por cursor: `cursor` es el valor `UpdatedAtUtc` del ultimo item de la pagina anterior.
+
+**Query dispatched:** `GetFollowersQuery(UserId, Limit, CursorUpdatedAtUtc)`
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "userId": "uuid",
+    "updatedAtUtc": "ISO8601"
+  }
+]
+```
+
+> Nota: la respuesta actual es una lista plana sin wrapper de paginacion. El nombre enriquecido del usuario (displayName, avatarUrl) debe resolverse via `GET /api/v1/social/profiles/{userId}` una vez implementado.
+
+---
+
+### `GET /social/following/{userId}`
+
+Lista los usuarios que sigue `userId`. Mismo shape que `/social/followers/{userId}`.
+
+**Auth:** `Social.View`
+
+**Query params:** `?limit=50&cursor=ISO8601_datetime`
+
+**Query dispatched:** `GetFollowingQuery(UserId, Limit, CursorUpdatedAtUtc)`
+
+**Response:** `200 OK` — mismo shape que `GET /social/followers/{userId}`
+
+---
+
+## Block / Unblock
+
+### `POST /social/blocks/{otherUserId}`
+
+Bloquea al usuario `otherUserId`. Transiciona el FollowEdge existente (en cualquier estado) a `Blocked`, registrando el actor como `BlockedBy`. Si no existe FollowEdge previo, la restriccion se aplica en futuras solicitudes via logica de aplicacion.
+
+**Auth:** `Social.Block`
+
+**Command dispatched:** `BlockUserCommand(ActorId, OtherUserId)`
+**Event emitted:** `FollowBlockedDomainEvent` — incluye `BlockedBy`
+
+**Response:** `200 OK` (sin body)
+
+**Errors:**
+- `400` — `follow.only_participants_can_modify`
+
+---
+
+### `DELETE /social/blocks/{otherUserId}`
+
+Desbloquea al usuario `otherUserId`. Solo puede ejecutarlo quien realizo el bloqueo (`BlockedBy == actorId`).
+
+**Auth:** `Social.Block`
+
+**Command dispatched:** `UnblockUserCommand(ActorId, OtherUserId)`
+**Event emitted:** `FollowUnblockedDomainEvent` — incluye `UnblockedBy`
+
+**Response:** `200 OK` (sin body)
+
+**Errors:**
+- `400` — `follow.only_blocker_can_unblock`
+
+---
+
+## Profiles (planificado)
+
+> Los siguientes endpoints **no estan implementados todavia**. Estan documentados aqui para guiar el diseño futuro.
+
+### `GET /social/profiles/{userId}` (planificado)
+
+Retorna el Profile social del usuario. La respuesta varia segun la visibilidad y relacion entre actor y target.
+
+**Auth:** `Social.View`
+
+**Response (full — Public o Accepted follower):**
 ```json
 {
   "id": "uuid",
   "userId": "uuid",
-  "name": "string",
+  "displayName": "string",
   "bio": "string | null",
   "avatarUrl": "string | null",
-  "privacy": "Public | Private",
-  "followerCount": 0,
-  "followingCount": 0,
-  "isFollowing": false,
-  "isFollowedBy": false,
-  "followStatus": "none | pending | accepted",
-  "isBlocked": false,
-  "createdAt": "ISO8601"
+  "visibility": "Public | Private",
+  "createdAtUtc": "ISO8601"
 }
 ```
 
-**Response (redactado — BusyOnly):**
+**Response (restringido — Private sin follow aceptado):**
 ```json
 {
   "id": "uuid",
-  "name": "string",
+  "userId": "uuid",
+  "displayName": "string",
   "avatarUrl": "string | null",
-  "privacy": "Public | Private"
+  "visibility": "Private"
 }
 ```
 
-**Response (sin acceso — None):** `404 Not Found`
+> `Profile.DisplayName` es el campo canónico (no `name`).
 
 ---
 
-### `PATCH /profiles/me` 🚧
+### `PATCH /social/profiles/me` (planificado)
 
 Actualiza el Profile del usuario autenticado.
 
 **Request (partial):**
 ```json
 {
-  "name": "string",
+  "displayName": "string",
   "bio": "string | null",
   "avatarUrl": "string | null",
-  "privacy": "Public | Private"
+  "visibility": "Public | Private"
 }
 ```
 
-**Command dispatched:** `UpdateProfileCommand`
-**Event emitted:** `ProfileUpdated`
+**Command dispatched (planificado):** `UpdateProfileCommand`
+**Event emitted (planificado):** `ProfileUpdatedDomainEvent`
 
 ---
 
-## Follow Graph
+## Mute (planificado)
 
-### `POST /profiles/:profileId/follow` 🚧
+> No implementado. El estado `Muted` suprime `PostPublished` del feed del follower sin afectar el Follow graph. El target no se entera.
 
-Envía un Follow Request al Profile target.
-- Si target `privacy = Public` → acepta automáticamente → `FollowAccepted`
-- Si target `privacy = Private` → queda en `Pending` → `FollowRequested`
+### `POST /social/mutes/{otherUserId}` (planificado)
 
-**Command dispatched:** `FollowProfileCommand`
-**Events emitted:** `FollowRequested` | `FollowAccepted`
+**Command dispatched (planificado):** `MuteUserCommand`
 
-**Response:** `200 OK`
-```json
-{ "followStatus": "pending | accepted" }
-```
+### `DELETE /social/mutes/{otherUserId}` (planificado)
+
+**Command dispatched (planificado):** `UnmuteUserCommand`
 
 ---
 
-### `DELETE /profiles/:profileId/follow` 🚧
+## Posts & Feed (planificado)
 
-Deja de seguir a un Profile (o cancela un Follow Request pendiente).
+> No implementados. Ver spec pack `DRAFT-social-feed`.
 
-**Command dispatched:** `UnfollowProfileCommand`
-**Event emitted:** `FollowRemoved`
+### `GET /social/feed` (planificado)
 
----
+Feed del usuario autenticado (posts de usuarios seguidos con `status = Accepted` y sin Mute activo).
 
-### `POST /follow-requests/:requestId/accept` 🚧
+**Query params:** `?limit=20&cursor=string`
 
-El target acepta un Follow Request pendiente.
+### `GET /social/profiles/{userId}/posts` (planificado)
 
-**Command dispatched:** `AcceptFollowRequestCommand`
-**Event emitted:** `FollowAccepted`
+Posts publicos del usuario `userId`.
 
----
-
-### `POST /follow-requests/:requestId/reject` 🚧
-
-El target rechaza un Follow Request pendiente.
-
-**Command dispatched:** `RejectFollowRequestCommand`
-**Event emitted:** `FollowRejected`
-
----
-
-### `GET /follow-requests` 🚧
-
-Lista Follow Requests pendientes recibidos por el usuario autenticado.
-
-**Response:**
-```json
-{
-  "items": [
-    {
-      "id": "uuid",
-      "fromProfileId": "uuid",
-      "fromProfileName": "string",
-      "fromAvatarUrl": "string | null",
-      "requestedAt": "ISO8601"
-    }
-  ],
-  "total": 0
-}
-```
-
----
-
-### `GET /profiles/:profileId/followers` 🚧
-
-Lista los seguidores de un Profile.
-
-**Query params:** `?page=1&pageSize=20`
-
-**Response:**
-```json
-{
-  "items": [
-    { "id": "uuid", "name": "string", "avatarUrl": "string | null" }
-  ],
-  "total": 0,
-  "page": 1,
-  "pageSize": 20
-}
-```
-
----
-
-### `GET /profiles/:profileId/following` 🚧
-
-Lista los Profiles que sigue un Profile. Mismo shape que `/followers`.
-
----
-
-## Block / Mute
-
-### `POST /profiles/:profileId/block` 🚧
-
-Bloquea un Profile. Elimina el Follow en ambas direcciones.
-El bloqueado no puede ver el Profile del bloqueador ni enviarle Follow Requests.
-
-**Command dispatched:** `BlockProfileCommand`
-**Event emitted:** `ProfileBlocked`
-
----
-
-### `DELETE /profiles/:profileId/block` 🚧
-
-Desbloquea un Profile.
-
-**Command dispatched:** `UnblockProfileCommand`
-**Event emitted:** `ProfileUnblocked`
-
----
-
-### `POST /profiles/:profileId/mute` 🚧
-
-Silencia el Feed del Profile target (posts no aparecen en el feed del actor).
-No afecta el Follow graph; el target no se entera.
-
-**Command dispatched:** `MuteProfileCommand`
-
----
-
-### `DELETE /profiles/:profileId/mute` 🚧
-
-Quita el mute.
-
----
-
-## Posts & Feed
-
-### `GET /feed` 🚧
-
-Retorna el Feed personalizado del usuario autenticado (posts de Profiles seguidos).
-
-**Query params:** `?page=1&pageSize=20&cursor=string`
-
-**Response:**
-```json
-{
-  "items": [
-    {
-      "id": "uuid",
-      "profileId": "uuid",
-      "profileName": "string",
-      "profileAvatarUrl": "string | null",
-      "type": "text | image | video | listing_share",
-      "content": "string | null",
-      "media": [{ "url": "string", "type": "image | video" }],
-      "listingId": "uuid | null",
-      "reactionCounts": { "like": 0, "love": 0 },
-      "myReaction": "string | null",
-      "commentCount": 0,
-      "createdAt": "ISO8601"
-    }
-  ],
-  "nextCursor": "string | null"
-}
-```
-
----
-
-### `GET /profiles/:profileId/posts` 🚧
-
-Lista los Posts públicos de un Profile (respeta visibilidad).
-
-**Query params:** `?page=1&pageSize=20`
-
-**Response:** mismo shape que `GET /feed` sin personalización.
-
----
-
-### `POST /posts` 🚧
-
-Crea un Post en el Profile del usuario autenticado.
+### `POST /social/posts` (planificado)
 
 **Request:**
 ```json
 {
-  "profileId": "uuid",
   "type": "text | image | video | listing_share",
   "content": "string | null",
   "media": [{ "url": "string", "type": "image | video" }],
@@ -258,43 +289,55 @@ Crea un Post en el Profile del usuario autenticado.
 }
 ```
 
-**Command dispatched:** `CreatePostCommand`
-**Event emitted:** `PostPublished`
+**Command dispatched (planificado):** `CreatePostCommand`
+**Event emitted (planificado):** `PostPublishedDomainEvent`
 
-**Response:** `201 Created` con el Post creado.
+### `DELETE /social/posts/{postId}` (planificado)
 
----
-
-### `DELETE /posts/:postId` 🚧
-
-Elimina un Post propio.
-
-**Command dispatched:** `DeletePostCommand`
-**Event emitted:** `PostDeleted`
+**Command dispatched (planificado):** `DeletePostCommand`
+**Event emitted (planificado):** `PostDeletedDomainEvent`
 
 ---
 
-## Reactions
+## Reactions (planificado)
 
-### `POST /posts/:postId/reactions` 🚧
+> No implementados.
 
-Agrega una Reaction a un Post.
+### `POST /social/posts/{postId}/reactions` (planificado)
 
-**Request:**
-```json
-{ "type": "like | love | wow | haha | sad | angry" }
-```
-
-**Command dispatched:** `AddReactionCommand`
-**Event emitted:** `ReactionAdded`
+**Request:** `{ "type": "like | love | wow | haha | sad | angry" }`
 
 > Un usuario solo puede tener una Reaction activa por Post. Volver a enviar reemplaza la anterior.
 
+**Command dispatched (planificado):** `AddReactionCommand`
+**Event emitted (planificado):** `ReactionAddedDomainEvent`
+
+### `DELETE /social/posts/{postId}/reactions` (planificado)
+
+**Command dispatched (planificado):** `RemoveReactionCommand`
+**Event emitted (planificado):** `ReactionRemovedDomainEvent`
+
 ---
 
-### `DELETE /posts/:postId/reactions` 🚧
+## Domain Events Summary
 
-Elimina la Reaction del usuario autenticado en un Post.
+| Event | Payload fields | Trigger |
+|-------|---------------|---------|
+| `FollowRequestedDomainEvent` | `FollowId`, `FollowerId`, `FolloweeId` | Follow creado (siempre) |
+| `FollowAcceptedDomainEvent` | `FollowId`, `FollowerId`, `FolloweeId` | Follow auto-aceptado (Public) o aprobado manualmente |
+| `FollowRejectedDomainEvent` | `FollowId`, `FollowerId`, `FolloweeId` | Followee rechaza request |
+| `FollowRemovedDomainEvent` | `FollowId`, `FollowerId`, `FolloweeId`, `RemovedBy` | Follow o request eliminado |
+| `FollowBlockedDomainEvent` | `FollowId`, `FollowerId`, `FolloweeId`, `BlockedBy` | Bloqueo ejecutado |
+| `FollowUnblockedDomainEvent` | `FollowId`, `FollowerId`, `FolloweeId`, `UnblockedBy` | Desbloqueo ejecutado |
+| `ProfileCreatedDomainEvent` | `ProfileId` | Profile creado al registrarse |
 
-**Command dispatched:** `RemoveReactionCommand`
-**Event emitted:** `ReactionRemoved`
+---
+
+## Permissions
+
+| Permission constant | Value | Operations |
+|--------------------|-------|-----------|
+| `Permissions.FollowUser` | `Social.Follow` | `POST /social/follows/{targetUserId}` |
+| `Permissions.ManageFollowers` | `Social.ManageFollowers` | Approve, Reject, RemoveFollow |
+| `Permissions.BlockUser` | `Social.Block` | Block, Unblock |
+| `Permissions.ViewSocial` | `Social.View` | GetFollowers, GetFollowing, GetFollowStatus |
