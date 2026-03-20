@@ -1,5 +1,5 @@
 ---
-title: Flow 03 — Social: Follow, Feed, Posts y Reactions
+title: "Flow 03 — Social: Follow, Feed, Posts y Reactions"
 description: >
   Cualquier usuario puede seguir perfiles (con o sin aprobación), publicar Posts
   (con cross-posting opcional a redes externas), reaccionar a contenido y consumir
