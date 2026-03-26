@@ -23,8 +23,11 @@ version: 1
 ### Separación Catalog / Listing (decisión v1)
 | Dominio | Entidad | Responsabilidad |
 |---------|---------|-----------------|
-| **Catalog** | `Service` | Operativo: duración, precio base, buffers, intakeForm, confirmationPolicy, location |
-| **Offering** | `Listing` | Comercial/discovery: copy, media, tags, categoría, promoción, modificadores de precio |
+| **Catalog** | `Service` | Operativo: nombre, duración, precio base, buffers |
+| **Listing** | `Listing` | Comercial/discovery: copy, media, tags, slotConfig, confirmationPolicy, visibility, intakeForm, addOns, placeId, channels |
+
+> **Decisiones v1:** `location` (como placeId), `confirmationPolicy`, `intakeForm` y `media`
+> pertenecen al Listing, no al Service. Ver data model abajo (líneas 96-101).
 
 Reglas de relación:
 - **1 Service → N Listings**
@@ -162,7 +165,7 @@ Service {
   - `GET    /catalog/services/{id}`          → detalle
   - `GET    /catalog/services`               → lista por profile
   - `PATCH  /catalog/services/{id}`          → `UpdateService`
-  - `POST   /catalog/services/{id}/activate` → `ActivateService`
+  - `POST   /catalog/services/{id}/publish`  → `PublishService` (activa el Service; UX label = "Activar")
   - `POST   /catalog/services/{id}/archive`  → `ArchiveService`
 - **Persistence:** tabla `catalog.services`
 

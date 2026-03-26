@@ -5,8 +5,12 @@ Module: `Vt.Modules.Catalog`
 Schema: `catalog`
 
 > **Scope v1:** Services (reservables con Slots). Products independientes son v2.
-> Un Service define la operativa (duración, precio base, política de confirmación).
-> Un Listing (ver `listing.md`) expone el Service comercialmente con precio efectivo, canales y slotConfig.
+> Un Service define la operativa (duración, precio base, buffers).
+> Un Listing (ver `listing.md`) expone el Service comercialmente con precio efectivo, canales, slotConfig,
+> confirmationPolicy, intakeForm, media y visibility.
+>
+> **Decisiones v1 (ver Flow 05):** `location`, `confirmationPolicy`, `intakeForm` y `media` pertenecen
+> al Listing, no al Service. Service es puramente operativo.
 
 ---
 
@@ -28,11 +32,10 @@ Retorna todos los Services de un Profile.
       "name": "string",
       "description": "string",
       "status": "Draft | Active | Archived",
-      "category": "string | null",
-      "tags": ["string"],
       "durationMinutes": 60,
       "basePrice": { "amount": 0, "currency": "ARS" },
-      "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
+      "preBufferMinutes": 0,
+      "postBufferMinutes": 0,
       "listingCount": 0,
       "createdAt": "ISO8601"
     }
@@ -57,18 +60,10 @@ Retorna el detalle de un Service.
   "name": "string",
   "description": "string",
   "status": "Draft | Active | Archived",
-  "category": "string | null",
-  "tags": ["string"],
   "durationMinutes": 60,
   "basePrice": { "amount": 0, "currency": "ARS" },
-  "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
-  "location": "string | null",
-  "media": [
-    { "url": "string", "type": "image | video", "order": 0 }
-  ],
-  "intakeForm": [
-    { "label": "string", "type": "text | select | bool", "required": true, "options": ["string"] }
-  ],
+  "preBufferMinutes": 0,
+  "postBufferMinutes": 0,
   "listingCount": 0,
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601"
@@ -87,14 +82,10 @@ Crea un Service en estado `Draft`.
   "profileId": "uuid",
   "name": "string",
   "description": "string | null",
-  "category": "string | null",
-  "tags": ["string"],
   "durationMinutes": 60,
   "basePrice": { "amount": 0, "currency": "ARS" },
-  "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
-  "location": "string | null",
-  "media": [],
-  "intakeForm": []
+  "preBufferMinutes": 0,
+  "postBufferMinutes": 0
 }
 ```
 
@@ -117,12 +108,8 @@ No permitido si status = `Archived`.
   "description": "string",
   "durationMinutes": 60,
   "basePrice": { "amount": 0, "currency": "ARS" },
-  "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
-  "category": "string",
-  "tags": ["string"],
-  "location": "string",
-  "media": [],
-  "intakeForm": []
+  "preBufferMinutes": 0,
+  "postBufferMinutes": 0
 }
 ```
 
@@ -134,7 +121,7 @@ No permitido si status = `Archived`.
 ### `POST /services/:serviceId/publish` 🚧
 
 Transiciona el Service de `Draft` a `Active`.
-Valida campos requeridos (name, durationMinutes, confirmationPolicy).
+Valida campos requeridos (name, durationMinutes, basePrice ≥ 0).
 
 **Command dispatched:** `PublishServiceCommand`
 **Event emitted:** `ServicePublished`

@@ -169,6 +169,132 @@ Si cambia `slotConfig`: Supply reproyecta Slots futuros.
 
 ---
 
+## Recurrence
+
+### `PUT /listings/:listingId/weekly-recurrence` 🚧
+
+Configura recurrencia semanal (lunes-domingo con time ranges por día).
+
+**Auth:** `listing:create` permission
+
+**Request:**
+```json
+{
+  "days": [
+    {
+      "day": "Monday",
+      "timeRanges": [
+        { "start": "09:00", "end": "13:00" },
+        { "start": "16:00", "end": "20:00" }
+      ]
+    }
+  ]
+}
+```
+
+**Command dispatched:** `UpdateWeeklyRecurrenceCommand`
+
+---
+
+### `PUT /listings/:listingId/weekly-nweeks-recurrence` 🚧
+
+Configura recurrencia cada N semanas.
+
+**Request:**
+```json
+{
+  "days": [ "..." ],
+  "intervalInWeeks": 2
+}
+```
+
+**Command dispatched:** `UpdateWeeklyByNWeeksRecurrenceCommand`
+
+---
+
+### `PUT /listings/:listingId/weekly-recurrence-exceptions` 🚧
+
+Configura fechas de excepción (feriados, vacaciones) para recurrencia semanal.
+
+**Request:**
+```json
+{
+  "exceptions": [
+    { "date": "2026-04-01", "reason": "Feriado" }
+  ]
+}
+```
+
+**Command dispatched:** `UpdateWeeklyRecurrenceExceptionsCommand`
+
+---
+
+### `PUT /listings/:listingId/specific-recurrence` 🚧
+
+Configura fechas específicas en lugar de recurrencia semanal.
+
+**Request:**
+```json
+{
+  "dates": [
+    { "date": "2026-04-15", "timeRanges": [ { "start": "10:00", "end": "18:00" } ] }
+  ]
+}
+```
+
+**Command dispatched:** `UpdateSpecificDatesRecurrenceCommand`
+
+---
+
+## Media
+
+### `POST /listings/:listingId/media` 🚧 PENDING
+
+Upload de imagen/video al Listing. Máximo 5 media items.
+
+**Auth:** `listing:create` permission
+**Content-Type:** `multipart/form-data`
+
+**Request:** Form field `file` (image/video)
+
+**Command dispatched:** `AddListingMediaCommand`
+
+---
+
+### `DELETE /listings/:listingId/media/:mediaId` 🚧 PENDING
+
+Elimina un media item del Listing.
+
+**Command dispatched:** `RemoveListingMediaCommand`
+
+---
+
+### `PUT /listings/:listingId/media/:mediaId/cover` 🚧 PENDING
+
+Establece un media item como cover image.
+
+**Command dispatched:** `SetListingCoverMediaCommand`
+
+---
+
+### `PUT /listings/:listingId/media/reorder` 🚧 PENDING
+
+Reordena los media items.
+
+**Request:**
+```json
+{
+  "order": [
+    { "mediaId": "uuid", "order": 1 },
+    { "mediaId": "uuid", "order": 2 }
+  ]
+}
+```
+
+**Command dispatched:** `ReorderListingMediaCommand`
+
+---
+
 ## Lifecycle
 
 ### `POST /listings/:listingId/publish` 🚧

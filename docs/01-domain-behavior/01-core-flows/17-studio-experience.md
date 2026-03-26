@@ -205,7 +205,7 @@ El wizard sigue el patrón Airbnb: **un tema por pantalla**, con progress bar ar
 |---|---|---|---|
 | Duración | `Service.durationMin` | ✅ | Preset chips (15, 30, 45, 60, 90, 120 min) + custom input |
 | Precio base | `Service.basePrice` | ✅ | Currency input con selector de moneda |
-| Confirmación | `Service.confirmationPolicy` | ✅ | Toggle: "Confirmar automáticamente" (AutoConfirm) / "Revisar cada solicitud" (ManualConfirm) |
+| Confirmación | `Listing.confirmationPolicy` | ✅ | Toggle: "Confirmar automáticamente" (AutoConfirm) / "Revisar cada solicitud" (ManualConfirm) |
 
 **Defaults inteligentes:**
 - Duración: 60 min pre-seleccionado (Calendly pattern — most common duration).
@@ -459,11 +459,13 @@ Service {
   description: string?               // ← Paso 1
   durationMin: int                   // ← Paso 2
   basePrice: decimal                 // ← Paso 2
-  confirmationPolicy: AutoConfirm | ManualConfirm  // ← Paso 2
+  basePriceCurrency: string          // ← Paso 2
   preBufferMin: int?                 // ← Paso 2 (advanced)
   postBufferMin: int?                // ← Paso 2 (advanced)
-  intakeForm: FormDefinition?        // NEEDS-CLARIFICATION
-  tags: Tag[]                        // ← Paso 1
+  // -- confirmationPolicy: vive en Listing (decisión v1)
+  // -- intakeForm: vive en Listing (decisión v1)
+  // -- media: vive en Listing (decisión v1)
+  // -- location: vive en Listing como placeId (decisión v1)
 }
 ```
 
@@ -472,37 +474,49 @@ Service {
 ```
 Listing {
   id: UUID
-  serviceId: UUID                    // link al Service
-  profileId: UUID                    // owner (same as Service)
+  serviceId: UUID?                   // link al Service (opcional en draft)
+  profileId: UUID                    // owner
   status: Draft | Published | Unpublished | Archived
   title: string                      // ← synced from Service.name initially
   description: string?               // ← Paso 4 (rich text)
-  media: MediaItem[]                 // ← Paso 4
+  media: MediaItem[]                 // ← Paso 4 (max 5)
   placeId: UUID?                     // ← Paso 3
+  price: decimal                     // override de Service.basePrice
+  currency: string                   // "ARS", "USD"
+  confirmationPolicy: AutoConfirm | ManualConfirm | RequestOnly  // ← Paso 2
+  visibility: Public | Private
+  capacity: int                      // default: 1
   tags: Tag[]                        // ← Paso 1
-  cancellationPolicy: enum?          // ← Paso 4
-  slotConfig: SlotConfiguration      // linked to Timeline
-  channelIds: UUID[]                 // default: [marketplace]
-  visibility: Public | Private | ByLink
+  slotConfig: SlotConfiguration      // durationMin, buffers, bookingWindow
+  intakeForm: FieldDefinition[]      // preguntas al reservar
+  addOns: AddOn[]                    // extras opcionales
+  channelIds: UUID[]                 // al menos 1 para publicar
+  recurrence: ListingRecurrence      // weekly/nweeks/specificDates
 }
 ```
 
 ### Unified Lifecycle (Offering = Service + Listing)
 
+> **NOTA (actualización v1):** No hay endpoint compuesto `CreateOfferingCommand`.
+> El frontend orquesta `POST /catalog/services` + `POST /listings` por separado.
+> Esto permite múltiples paths de creación (service-first, listing-first, unified wizard).
+
 ```
 [Wizard Start]
     │
-    │  CreateOfferingCommand → creates Service(Draft) + Listing(Draft) atomically
+    │  POST /catalog/services → Service(Draft)
+    │  POST /listings → Listing(Draft) con serviceId
     │
     ▼
-[Draft] ── editSteps() → [Draft] (auto-save each step)
+[Draft] ── editSteps() → [Draft] (auto-save via PATCH per section)
     │
-    │  PublishOfferingCommand → Service.activate() + Listing.publish()
+    │  POST /catalog/services/:id/publish → Service(Active)
+    │  POST /listings/:id/publish → Listing(Published)
     │
     ▼
-[Published] ←── unpublish() ──→ [Unpublished]
+[Published] ←��─ unpublish() ──→ [Unpublished]
     │                                   │
-    │  archive()                        │  republish()
+    │  archive()                        │  POST /listings/:id/publish
     │                                   │
     ▼                                   │
 [Archived] (terminal)    ←──────────────┘
@@ -525,15 +539,20 @@ Listing {
 
 ## 9. Commands
 
-| Command | Params | Effect | Events emitted |
+> **NOTA (actualización v1):** No hay commands compuestos tipo `CreateOffering`.
+> El frontend orquesta los endpoints individuales de Catalog y Listing modules.
+
+| Command | Endpoint | Effect | Events emitted |
 |---|---|---|---|
-| `CreateOffering` | name, category | Creates Service(Draft) + Listing(Draft) atomically | `OfferingDraftCreated` |
-| `UpdateOfferingStep` | listingId, stepData | Updates the relevant Service/Listing fields | (none — auto-save) |
-| `PublishOffering` | listingId | Validates required fields → Service.activate() + Listing.publish() | `ServiceActivated`, `ListingPublished` |
-| `UnpublishOffering` | listingId | Listing.unpublish() | `ListingUnpublished` |
-| `RepublishOffering` | listingId | Listing.publish() (from Unpublished) | `ListingPublished` |
-| `ArchiveOffering` | listingId | Service.archive() + Listing.archive() | `ServiceArchived`, `ListingArchived` |
-| `DuplicateOffering` | listingId | Clone Service + Listing as new Draft | `OfferingDraftCreated` |
+| `CreateService` | `POST /catalog/services` | Creates Service(Draft) | `ServiceCreated` |
+| `CreateListing` | `POST /listings` | Creates Listing(Draft) con serviceId opcional | `ListingCreated` |
+| `UpdateService` | `PATCH /catalog/services/:id` | Updates Service fields | `ServiceUpdated` |
+| `UpdateListing` | `PATCH /listings/:id` | Updates Listing fields | `ListingUpdated` |
+| `PublishService` | `POST /catalog/services/:id/publish` | Service(Draft) → Active | `ServicePublished` |
+| `PublishListing` | `POST /listings/:id/publish` | Listing(Draft) → Published | `ListingPublished` |
+| `UnpublishListing` | `POST /listings/:id/unpublish` | Published → Unpublished | `ListingUnpublished` |
+| `ArchiveService` | `POST /catalog/services/:id/archive` | Service → Archived | `ServiceArchived` |
+| `ArchiveListing` | `POST /listings/:id/archive` | Listing → Archived | `ListingArchived` |
 | `ConfirmBookingRequest` | bookingId | BookingRequest.confirm() | `BookingConfirmed` |
 | `RejectBookingRequest` | bookingId, reason? | BookingRequest.reject() | `BookingRejected` |
 
