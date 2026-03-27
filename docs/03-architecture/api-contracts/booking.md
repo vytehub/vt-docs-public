@@ -22,9 +22,12 @@ See `01-domain-behavior/01-core-flows/02-open-and-book.md` for the end-to-end fl
 
 Creates a Booking for a given Slot and Listing.
 
-The command used depends on `Listing.bookingRules.confirmationRequired`:
-- `false` → dispatches `CreateBooking` → Booking starts as **Confirmed** → event `BookingCreated`
-- `true` → dispatches `RequestBooking` → Booking starts as **Requested** → event `BookingRequested`
+The command used depends on `Listing.confirmationPolicy`:
+- `AutoConfirm` → dispatches `CreateBooking` → Booking starts as **Confirmed** → event `BookingCreated`
+- `ManualConfirm | RequestOnly` → dispatches `RequestBooking` → Booking starts as **Pending** → event `BookingRequested`
+
+> **Updated 2026-03-26:** Field name corrected from `bookingRules.confirmationRequired` (boolean) to `confirmationPolicy` (enum).
+> Status corrected from `Requested` to `Pending`. See `current-product-truth.md` CONFLICT-01 and CONFLICT-02.
 
 **Request:**
 ```json
@@ -55,13 +58,57 @@ The command used depends on `Listing.bookingRules.confirmationRequired`:
 ```json
 {
   "bookingId": "uuid",
-  "status": "Requested",
+  "status": "Pending",
   "listingId": "uuid",
   "slotId": "uuid",
   "startAt": "ISO8601",
   "endAt": "ISO8601"
 }
 ```
+
+---
+
+## Soft-hold a Slot
+
+### `POST /bookings/hold` 🚧
+
+Creates a soft-hold on a Slot with TTL (default: 5 min). Used when the user selects a slot before completing the booking form.
+
+> **Added 2026-03-26:** Previously defined in Flow 02 but missing from this contract. See `current-product-truth.md` CONFLICT-04.
+
+**Request:**
+```json
+{
+  "listingId": "uuid",
+  "slotId": "uuid"
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "holdId": "uuid",
+  "slotId": "uuid",
+  "expiresAt": "ISO8601"
+}
+```
+
+**Behavior:**
+- Backend creates a Booking in `Holding` state with TTL.
+- If TTL expires: backend auto-cancels the hold, slot becomes available again.
+- Frontend should display countdown timer.
+
+**Command dispatched:** `HoldSlotCommand`
+**Event emitted:** `SlotHeld`
+
+---
+
+### `DELETE /bookings/hold/:holdId` 🚧
+
+Releases a soft-hold before TTL expiry (e.g., user navigates away).
+
+**Command dispatched:** `ReleaseHoldCommand`
+**Event emitted:** `SlotHoldReleased`
 
 ---
 
@@ -75,7 +122,7 @@ Returns a Booking. Visible to the attendee and the provider.
 ```json
 {
   "bookingId": "uuid",
-  "status": "Requested | Confirmed | Cancelled | Completed | NoShow",
+  "status": "Pending | Confirmed | Cancelled | Completed | NoShow",
   "listingId": "uuid",
   "listingTitle": "string",
   "profileId": "uuid",

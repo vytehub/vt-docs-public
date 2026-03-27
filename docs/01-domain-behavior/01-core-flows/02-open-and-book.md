@@ -188,6 +188,10 @@ Booking {
 
 ### Slot (proyección — no persistida como entidad primaria)
 
+> **DEPRECATED (2026-03-26):** This conceptual model uses a `status` enum. The canonical API response shape
+> uses `available: boolean` + `remainingCapacity: int`. See `api-contracts/timelines.md` (Availability section)
+> and `work/vt-work/current-product-truth.md` CONFLICT-03.
+
 ```
 Slot {
   id:          UUID
