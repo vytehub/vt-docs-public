@@ -24,17 +24,24 @@ version: 1
 
 ## 2. Domain Context
 
-### Timeline como motor de tiempo
-El Timeline **no es un calendario de usuario tradicional**. Es el motor que:
-1. Agrega **Events** como fuente de verdad (Bookings, eventos privados).
-2. **Proyecta Slots** desde los Listings publicados del Profile.
-3. **Ejecuta ConflictRules** para detectar conflictos cross-timeline.
+### Timeline como configuración de agenda (ADR-0006)
+El Timeline **no es un contenedor de eventos**. Es la configuración que define:
+1. **De quién es** la agenda (owner, type, privacy).
+2. **Quién puede ver/gestionar** (members).
+3. **Qué ConflictRules** aplican (cross-timeline).
 
-Los Slots son proyecciones derivadas — no entidades independientes ni creadas directamente
-por el usuario.
+Los **Events** son entidades independientes que se linkean a Timelines via `EventTimelineLink` (N:M).
+Un evento puede ser visible en múltiples timelines simultáneamente.
 
-La disponibilidad es implícita: todo el tiempo es disponible salvo que un Event lo ocupe
-o una ConflictRule marque un conflicto externo.
+### Distribución de responsabilidades (ADR-0006)
+
+| Concepto | Módulo | Descripción |
+|----------|--------|-------------|
+| Timeline (config) | **Timelines** | Privacy, members, conflict rules |
+| Event (tiempo ocupado) | **Events** | Entidad independiente, linked a N timelines |
+| ConflictRule (qué observar) | **Timelines** | Define qué timelines observar |
+| ConflictDetection (solapamientos) | **Events** | Detecta y registra overlaps entre eventos |
+| Slot Projection | **Events** | Calcula disponibilidad desde Listing rules - Events ocupados |
 
 ### Excepciones de disponibilidad
 Las fechas/franjas donde **no se proyecta un Slot** se definen en el **Listing** (Flow 06),
@@ -51,11 +58,6 @@ Ejemplos:
 
 Action en v1: solo `NotifyOnly` — notificación al usuario; sin cancelación ni ocultamiento automático.
 `HideSlots` queda reservado para v2.
-
-### Módulo Timeline (sucesor de Supply)
-El módulo `Timeline` reemplaza al módulo `Supply`. Además de proyectar Slots, posee el aggregate
-`Timeline`, gestiona TimelineEvents y ejecuta ConflictRules.
-*(Requiere ADR formal — ver sección 14)*
 
 ---
 
@@ -90,7 +92,7 @@ El módulo `Timeline` reemplaza al módulo `Supply`. Además de proyectar Slots,
 4. Usuario pulsa **"Nuevo evento"** (o clic en una franja horaria del calendario).
 5. Sistema muestra formulario: título (opcional), fecha/hora inicio y fin, notas (opcional).
 6. Usuario guarda el evento.
-7. Sistema persiste el `TimelineEvent` y evalúa si genera conflicto con Slots o Bookings existentes.
+7. Sistema persiste el `Event` (entidad independiente, linked al Timeline del usuario) y evalúa si genera conflicto con Slots o Bookings existentes.
 8. **Si hay conflicto:**
    - Sistema muestra modal de resolución:
      **Conservar todo** / **Cancelar Slot/Booking** / **Reagendar Slot/Booking**.
@@ -139,40 +141,51 @@ El módulo `Timeline` reemplaza al módulo `Supply`. Además de proyectar Slots,
 ## 7. Data Model (v1 minimal)
 
 ```
-Timeline {
+Timeline {                          -- módulo Timelines (configuración)
   id:          UUID
-  profileId:   UUID        -- FK Profile
+  profileId:   UUID                 -- FK Profile
   name:        string
-  timezone:    string
+  privacy:     public | followersOnly | private
   isDefault:   bool
   createdAt:   DateTime
 }
 
-TimelineEvent {
+ConflictRule {                      -- módulo Timelines (configuración)
+  id:                UUID
+  timelineId:        UUID           -- el Timeline que aplica esta regla
+  sourceTimelineId:  UUID           -- el Timeline externo a observar (≠ timelineId)
+  action:            NotifyOnly     -- v1; HideSlots reservado para v2
+  createdAt:         DateTime
+}
+
+Event {                             -- módulo Events (entidad independiente — ADR-0006)
   id:          UUID
-  timelineId:  UUID        -- FK Timeline
   title:       string?
   start:       DateTime
   end:         DateTime
-  isPrivate:   bool        -- true: solo visible para owner/delegado con ManageSchedule
+  type:        manual | booking | block | external
+  sourceId:    UUID?                -- bookingId si type=booking
+  createdBy:   UUID                 -- profileId del creador
+  status:      active | cancelled
   notes:       string?
+  visibility:  public | busyOnly | private
+  placeId:     UUID?
   createdAt:   DateTime
   updatedAt:   DateTime
 }
 
-ConflictRule {
-  id:                UUID
-  timelineId:        UUID  -- el Timeline que aplica esta regla
-  sourceTimelineId:  UUID  -- el Timeline externo a observar (≠ timelineId)
-  action:            NotifyOnly  -- v1; HideSlots reservado para v2
-  createdAt:         DateTime
+EventTimelineLink {                 -- módulo Events (relación N:M — ADR-0006)
+  eventId:     UUID                 -- FK Event
+  timelineId:  UUID                 -- FK Timeline
+  role:        primary | viewer | readonly
+  linkedAt:    DateTime
 }
 
-ConflictDetection {         -- registro de conflictos detectados
+ConflictDetection {                 -- módulo Events (detección de solapamientos)
   id:                   UUID
   conflictRuleId:        UUID
-  sourceEventId:         UUID  -- TimelineEvent del Source que genera el conflicto
-  targetSlotOrBookingId: UUID  -- Slot o Booking afectado en este Timeline
+  sourceEventId:         UUID       -- Event del Source que genera el conflicto
+  targetEventId:         UUID       -- Event afectado en este Timeline
   status:               Pending | Resolved | Dismissed
   resolution:           KeepAll | CancelTarget | RescheduleTarget | null
   detectedAt:           DateTime
@@ -186,12 +199,12 @@ ConflictDetection {         -- registro de conflictos detectados
 
 | Command | Aggregate | Precondición |
 |---------|-----------|--------------|
-| `AddTimelineEvent` | `Timeline` | Usuario autenticado; Timeline propio o Delegado con ManageSchedule |
-| `UpdateTimelineEvent` | `Timeline` | Event existe; mismo Timeline |
-| `RemoveTimelineEvent` | `Timeline` | Event existe; mismo Timeline |
-| `AddConflictRule` | `Timeline` | Source Timeline accesible; no existe regla duplicada; sourceId ≠ timelineId |
-| `RemoveConflictRule` | `Timeline` | ConflictRule existe en este Timeline |
-| `ResolveConflict` | `Timeline` | ConflictDetection en status Pending |
+| `AddEvent` | `Events` | Usuario autenticado; Timeline propio o Delegado con ManageSchedule. Crea Event + EventTimelineLink. |
+| `UpdateEvent` | `Events` | Event existe; solo type=manual/block |
+| `RemoveEvent` | `Events` | Event existe; solo type=manual/block |
+| `AddConflictRule` | `Timelines` | Source Timeline accesible; no existe regla duplicada; sourceId ≠ timelineId |
+| `RemoveConflictRule` | `Timelines` | ConflictRule existe en este Timeline |
+| `ResolveConflict` | `Events` | ConflictDetection en status Pending |
 
 ---
 
@@ -199,9 +212,9 @@ ConflictDetection {         -- registro de conflictos detectados
 
 | Event | Disparado por | Efectos downstream |
 |-------|-------------|-------------------|
-| `TimelineEventAdded` | `AddTimelineEvent` | Conflict detection: evalúa Slots/Bookings del mismo Timeline |
-| `TimelineEventUpdated` | `UpdateTimelineEvent` | Re-evalúa conflictos del evento modificado |
-| `TimelineEventRemoved` | `RemoveTimelineEvent` | Limpia ConflictDetections asociadas |
+| `EventCreated` | `AddEvent` | Conflict detection: evalúa solapamientos con eventos de otros timelines |
+| `EventUpdated` | `UpdateEvent` | Re-evalúa conflictos del evento modificado |
+| `EventCancelled` | `RemoveEvent` | Limpia ConflictDetections asociadas |
 | `ConflictRuleAdded` | `AddConflictRule` | Re-evalúa eventos históricos del Source Timeline |
 | `ConflictRuleRemoved` | `RemoveConflictRule` | Limpia notificaciones pendientes de esa regla |
 | `ConflictDetected` | (sistema, post-evaluación) | Notification in-app al usuario |
@@ -224,7 +237,7 @@ ConflictDetection {         -- registro de conflictos detectados
 
 ## 11. Outputs
 
-- `TimelineEvent` privado persistido y visible en el calendario del usuario.
+- `Event` (type=manual) persistido y linked al Timeline del usuario, visible en su calendario.
 - `ConflictRule` configurada; conflictos cross-timeline detectados y notificados al usuario.
 - Decisiones de resolución aplicadas (cancelaciones propagadas al módulo Booking).
 - Vista calendario actualizada con estado coherente (Slots, Bookings, eventos privados, conflictos resueltos/pendientes).
@@ -235,54 +248,38 @@ ConflictDetection {         -- registro de conflictos detectados
 
 ### Backend
 
-**Módulo:** `Timeline` (nuevo; reemplaza a `Supply`)
-- Posee el aggregate `Timeline` y sus subentidades (`TimelineEvent`, `ConflictRule`, `ConflictDetection`).
-- Responsable de proyección de Slots (migrado desde Supply).
-- **DbContext:** `TimelineDbContext` (schema: `timeline`)
+**Dos módulos backend involucrados (ADR-0006):**
 
-```
-src/Modules/Timeline/
-├── Timeline.Application/
-│   └── Commands/
-│       ├── AddTimelineEvent/
-│       ├── UpdateTimelineEvent/
-│       ├── RemoveTimelineEvent/
-│       ├── AddConflictRule/
-│       ├── RemoveConflictRule/
-│       └── ResolveConflict/
-├── Timeline.Domain/
-│   ├── Timelines/Timeline.cs
-│   ├── Timelines/TimelineEvent.cs
-│   ├── Timelines/ConflictRule.cs
-│   ├── Timelines/ConflictDetection.cs
-│   └── Timelines/Events/
-├── Timeline.Infrastructure/
-│   ├── TimelineDbContext.cs
-│   └── Migrations/
-├── Timeline.IntegrationEvents/
-│   ├── ConflictDetectedIntegrationEvent.cs
-│   └── ConflictResolvedIntegrationEvent.cs
-└── Timeline.Presentation/
-    ├── Endpoints/
-    └── Consumers/   (ListingPublished → proyectar Slots; BookingCreated → registrar Event)
-```
+**Módulo `Timelines`** — configuración de agenda
+- Posee el aggregate `Timeline` y `ConflictRule`.
+- **DbContext:** `TimelinesDbContext` (schema: `timelines`)
 
-**Endpoints:**
+**Módulo `Events`** — lo que ocupa tiempo
+- Posee `Event`, `EventTimelineLink`, `ConflictDetection`.
+- Responsable de Slot Projection.
+- **DbContext:** `EventsDbContext` (schema: `events`)
+
+**Endpoints (distribuidos entre módulos):**
 ```
-GET    /timeline                         → vista calendario del autenticado (slots + events + conflicts)
-POST   /timeline/events                  → AddTimelineEvent
-PATCH  /timeline/events/{id}             → UpdateTimelineEvent
-DELETE /timeline/events/{id}             → RemoveTimelineEvent
-GET    /timeline/rules                   → lista ConflictRules
-POST   /timeline/rules                   → AddConflictRule
-DELETE /timeline/rules/{id}              → RemoveConflictRule
-GET    /timeline/conflicts               → conflictos pendientes
-POST   /timeline/conflicts/{id}/resolve  → ResolveConflict
+-- Timelines module --
+GET    /timelines                                → lista timelines del autenticado
+POST   /timelines                                → CreateTimeline
+PATCH  /timelines/{id}/privacy                   → SetTimelinePrivacy
+GET    /timelines/{id}/conflict-rules             → lista ConflictRules
+POST   /timelines/{id}/conflict-rules             → AddConflictRule
+DELETE /timelines/conflict-rules/{id}             → RemoveConflictRule
+
+-- Events module --
+GET    /timelines/{id}/events                    → Events linked a este timeline
+POST   /timelines/{id}/events                    → AddEvent (manual/block)
+PATCH  /timelines/{id}/events/{eventId}          → UpdateEvent
+DELETE /timelines/{id}/events/{eventId}          → RemoveEvent
+GET    /timelines/{id}/conflicts                 → conflictos pendientes
+POST   /timelines/conflicts/{id}/resolve         → ResolveConflict
+GET    /availability?listingId=X&from=Y&to=Z     → Slot Projection
 ```
 
 **Integración Booking:** `ConflictResolved` (resolution=CancelTarget) → Booking module cancela el Booking afectado.
-
-**Nota arquitectural:** la migración Supply → Timeline requiere un ADR formal (ver NEEDS-CLARIFICATION).
 
 ### Frontend
 

@@ -1,7 +1,7 @@
 # VyteMerge — Arquitectura (simple y concisa)
 
 ## Objetivo
-Mostrar **cómo fluye el sistema** para “vender” un **Listing** (publicación) a través de **configurar y generar Slots** (disponibilidad) y convertirlos en **Bookings** (reservas).
+Mostrar **cómo fluye el sistema** para "vender" un **Listing** (publicación) a través de **configurar y generar Slots** (disponibilidad) y convertirlos en **Bookings** (reservas).
 
 ## Stack (actual)
 - **Frontend**: Angular + **Micro Frontends (Module Federation)** (Shell + MFEs)
@@ -33,18 +33,20 @@ flowchart LR
 
 ---
 
-## 2) Módulos (solo los necesarios para el flujo Listing → Slots → Booking)
+## 2) Módulos (flujo Listing → Slots → Booking)
 
 | Módulo (backend) | Responsabilidad | Entidades clave |
 |---|---|---|
 | Identity (Keycloak) | Login, tokens, roles/claims | Realm, Client, User, Role |
 | Profiles | Identidad de negocio (proveedor/cliente) | Profile |
-| Offer (Catalog & Listings) | Crear y publicar oferta | Service, Listing, Form (opcional) |
-| Supply (Time & Place) | Disponibilidad y reglas de generación | Timeline, Slot, SlotConfig, Place (opcional) |
-| Booking | Reservas sobre slots | Booking (y estados) |
+| Catalog | Definir qué se ofrece | Service |
+| Listing | Definir cómo se vende (scheduling, pricing, media) | Listing, SlotConfig, Recurrence |
+| Timelines | Configuración de agendas y reglas de conflicto | Timeline, ConflictRule |
+| Events | Lo que ocupa tiempo + slot projection | Event, EventTimelineLink, ConflictDetection |
+| Booking | Transacción de reserva | Booking (hold → confirm → complete) |
 | Communication (opcional) | Notificaciones (confirmaciones) | Notification |
 
-> Nota: si hoy Booking vive dentro de Supply en tu monolito, podés dejarlo como submódulo; la separación aquí es **conceptual**.
+> **ADR-0006:** Event es entidad independiente linked a N Timelines (no owned por Timeline). Slot Projection vive en Events.
 
 ---
 
@@ -56,22 +58,26 @@ erDiagram
   LISTING ||--|| SERVICE : describes
   LISTING ||--o{ SLOT_CONFIG : defines
   PROFILE ||--o{ TIMELINE : owns
-  TIMELINE ||--o{ SLOT : contains
+  TIMELINE ||--o{ CONFLICT_RULE : configures
+  EVENT }o--o{ TIMELINE : "linked via EventTimelineLink"
   SLOT_CONFIG ||--o{ SLOT : generates
   SLOT ||--o{ BOOKING : converts
+  BOOKING ||--o| EVENT : "creates on confirm"
 ```
 
 **Lectura**
-- Un **Listing** representa “lo que vendés” (Service + reglas).
-- Un **SlotConfig** define “cómo genero slots” (duración, días, buffers, reglas).
-- El **Timeline** es la fuente de verdad del tiempo del proveedor.
-- Los **Slots** se generan/registran en un Timeline y luego se convierten en **Bookings**.
+- Un **Listing** representa "lo que vendés" (Service + reglas).
+- Un **SlotConfig** define "cómo genero slots" (duración, días, buffers, reglas).
+- El **Timeline** es la configuración de la agenda (privacy, conflict rules, members).
+- Los **Events** son entidades independientes linked a N Timelines — representan "lo que ocupa tiempo".
+- Los **Slots** se proyectan (query-time) desde Listing rules - Events ocupados - ConflictRules.
+- Los **Bookings** son transacciones que al confirmarse crean un Event linked a los timelines relevantes.
 
 ---
 
 ## 4) Flujo principal (end-to-end) — Proveedor publica, cliente reserva
 
-### 4.1 Proveedor: crear Service + Listing + SlotConfig y generar Slots
+### 4.1 Proveedor: crear Service + Listing + SlotConfig
 
 ```mermaid
 sequenceDiagram
@@ -79,17 +85,14 @@ sequenceDiagram
   participant API as .NET API
   participant DB as PostgreSQL
 
-  P->>API: CreateServiceOrProduct
-  API->>DB: persist Service/Product
+  P->>API: CreateService
+  API->>DB: persist Service
 
   P->>API: CreateListing (refs Service, defines SlotConfig)
   API->>DB: persist Listing + SlotConfig
 
   P->>API: PublishListing
   API->>DB: Listing.status = Published
-
-  API-->>API: project Slots (Timeline + SlotConfig + ConflictRules)
-  API->>DB: persist Slots (SlotsProjected event)
 ```
 
 ### 4.2 Cliente: ver disponibilidad y crear Booking
@@ -100,15 +103,19 @@ sequenceDiagram
   participant API as .NET API
   participant DB as PostgreSQL
 
-  C->>API: SearchListings / QueryAvailability (listingId + dateRange)
-  API->>DB: read projected Slots (filtered by privacy/eligibility)
+  C->>API: GET /availability (listingId + dateRange)
+  API->>DB: read Events (ocupados) + Listing rules + ConflictRules
+  API-->>API: project Slots (Listing rules - Events - Conflicts)
   API-->>C: available Slots
 
-  C->>API: RequestBooking / CreateBooking (slotId, listingId)
-  API->>DB: persist Booking (status = Requested or Confirmed)
-  API-->>API: create Event in Timeline (blocks slot)
-  API->>DB: persist Event (SlotsProjected reprojection)
-  API-->>C: BookingRequested / BookingCreated
+  C->>API: POST /bookings/hold (slotId, listingId)
+  API->>DB: persist Booking (status = Holding, TTL)
+
+  C->>API: POST /bookings (confirm)
+  API->>DB: persist Booking (status = Confirmed)
+  API-->>API: create Event + link to provider & client timelines
+  API->>DB: persist Event + EventTimelineLinks
+  API-->>C: BookingCreated
 ```
 
 ---
@@ -116,13 +123,17 @@ sequenceDiagram
 ## 5) Estados mínimos (para no complicar)
 ```mermaid
 stateDiagram-v2
-  [*] --> Pending
+  [*] --> Holding
+  Holding --> Pending
+  Holding --> Confirmed
   Pending --> Confirmed
   Pending --> Cancelled
   Confirmed --> Completed
   Confirmed --> Cancelled
+  Confirmed --> NoShow
   Cancelled --> [*]
   Completed --> [*]
+  NoShow --> [*]
 ```
 
 ---
@@ -144,7 +155,9 @@ flowchart TB
 ---
 
 ## Checklist (para alinear código ↔ doc)
-- [x] Confirmar dónde vive **SlotConfig** (Offer vs Supply) — decidido en `private/decisions/ADR-0001-slotconfig-ownership.md`: SlotConfig vive en **Offer** (Listing lo define), Supply proyecta Slots.
-- [ ] Definir 1 endpoint/command “**GenerateSlots**” con inputs claros (dateRange + rules) — ver `03-architecture/api-contracts/`.
-- [ ] Definir “**QueryAvailability**” como lectura optimizada (listingId + rango) — ver `03-architecture/api-contracts/`.
+- [x] Confirmar dónde vive **SlotConfig** (Offer vs Supply) — decidido en `ADR-0001`: SlotConfig vive en **Offer** (Listing lo define), Events proyecta Slots.
+- [x] Event como entidad independiente con links a Timeline — decidido en `ADR-0006`.
+- [ ] Definir endpoint "**GET /availability**" con inputs claros (listingId + dateRange) — ver `03-architecture/api-contracts/timelines.md`.
 - [x] Definir transición de estados de Booking — ver `01-domain-behavior/02-lifecycles/booking-lifecycle.md`.
+- [ ] Limpiar código de template (Event/Category/TicketType) de Catalog y Booking modules.
+- [ ] Implementar EventTimelineLink (N:M) en Events module.

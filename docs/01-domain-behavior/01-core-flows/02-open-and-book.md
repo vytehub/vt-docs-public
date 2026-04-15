@@ -16,7 +16,7 @@ last-reviewed: 2026-03-12
 
 | | |
 |---|---|
-| **Goal** | Permitir que un usuario autenticado reserve un slot en un Listing publicado, resultando en un Booking activo y un Event en el Timeline del proveedor. |
+| **Goal** | Permitir que un usuario autenticado reserve un slot en un Listing publicado, resultando en un Booking activo y un Event linked a los Timelines del proveedor y del cliente. |
 | **Actors** | Guest/User (cliente), Sistema VyteMerge |
 | **Out of scope** | Gestión del lado del proveedor (Flow 10), pagos (v1 out of scope), reagendamiento y cancelación (Flow 11), listings `FollowersOnly/Restricted/PartnerOnly` (NEEDS-CLARIFICATION) |
 | **Surfaces** | `vt-catalog-mfe`: Listing Detail, Slot Picker, Booking Form, Booking Confirmation |
@@ -32,23 +32,24 @@ last-reviewed: 2026-03-12
 | **Catalog BC** | `Catalog` | `Service` — definición operativa (duración, precio base, rules). Fuente interna. |
 | **Offer BC** | `Listing` | `Listing` — cómo se vende (copy, canales, scheduling, reglas comerciales). Lo que el cliente ve. |
 | **Booking BC** | `Booking` | `Booking` — reserva del cliente. Guarda snapshots al confirmar. |
-| **Supply BC** | `Timelines` | `Timeline` / `Event` — agenda del proveedor. Event creado al confirmar booking. |
+| **Supply BC** | `Timelines` | `Timeline` — configuración de agenda (privacy, conflict rules, members). |
+| **Events BC** | `Events` | `Event` — entidad independiente que ocupa tiempo. Creado al confirmar booking, linked a timelines de proveedor y cliente (ADR-0006). |
 
 > ⚠️ El módulo `Offering` (legacy) debe descomponerse en `Catalog` + `Listing` + `Booking`.
 > Ver **ADR Follow-up** al final de este documento.
 
 ### Slot vs Event
 
-- **Slot**: proyección calculada de disponibilidad (scheduling + bookings activos). Efímero.
-- **Event**: entidad persistida en el Timeline del proveedor. Creado cuando `Booking → Confirmed`.
+- **Slot**: proyección calculada de disponibilidad (scheduling + eventos ocupados). Efímero.
+- **Event**: entidad independiente (ADR-0006) que ocupa tiempo. Creado cuando `Booking → Confirmed`, linked a timelines de proveedor y cliente via `EventTimelineLink`.
 - Los Slots son referencia; los Events son la fuente de verdad de disponibilidad bloqueada.
 
 ### confirmationPolicy
 
-| `confirmationPolicy` | Booking inicial | Evento emitido | Event en Timeline |
+| `confirmationPolicy` | Booking inicial | Evento emitido | Event (ADR-0006) |
 |---|---|---|---|
-| `AutoConfirm` | `Confirmed` (inmediato) | `BookingCreated` | Creado inmediatamente |
-| `ManualConfirm` | `Pending` (espera proveedor) | `BookingRequested` | Creado en Flow 10 al aprobar |
+| `AutoConfirm` | `Confirmed` (inmediato) | `BookingCreated` | Event creado y linked a timelines de proveedor + cliente |
+| `ManualConfirm` | `Pending` (espera proveedor) | `BookingRequested` | Event creado en Flow 10 al aprobar y linked a timelines |
 
 ---
 
@@ -120,7 +121,7 @@ El usuario navega a Listing Detail:
    f. Ejecuta comando según `confirmationPolicy`:
       - `AutoConfirm` → `CreateBooking` → Booking a `Confirmed`
       - `ManualConfirm` → `RequestBooking` → Booking a `Pending`
-4. Si `Confirmed`: publica `BookingCreated`; `Timelines` module crea Event en Timeline del proveedor.
+4. Si `Confirmed`: publica `BookingCreated`; módulo `Events` crea Event (type=booking) y lo linkea a los timelines del proveedor y del cliente via `EventTimelineLink`.
 5. Si `Pending`: publica `BookingRequested`; Event se crea en Flow 10 cuando el proveedor apruebe.
 
 ### Paso 5 — Confirmación UI
@@ -224,7 +225,7 @@ Slot {
 | `SlotHeld` | `Booking` | `Listing` (marca slot como Holding) |
 | `HoldExpired` | `Booking` | `Listing` (libera slot) |
 | `BookingRequested` | `Booking` | `Notifications`, Flow 10 |
-| `BookingCreated` | `Booking` | `Timelines` (crea Event), `Notifications` |
+| `BookingCreated` | `Booking` | `Events` (crea Event + links a timelines), `Notifications` |
 
 ---
 
@@ -246,7 +247,7 @@ Slot {
 |---|---|
 | Booking en `Confirmed` | AutoConfirm exitoso |
 | Booking en `Pending` | ManualConfirm (esperando proveedor) |
-| Event en Timeline del proveedor | Solo cuando `Confirmed` |
+| Event linked a timelines (proveedor + cliente) | Solo cuando `Confirmed` |
 | Notificación al cliente | Siempre |
 | Notificación al proveedor | Siempre |
 
@@ -262,7 +263,7 @@ Slot {
 |---|---|
 | `Listing` | Queries: listing detail, slots disponibles |
 | `Booking` | Comandos: hold, request, create, expire |
-| `Timelines` | Crea Event vía integration event `BookingCreated` |
+| `Events` | Crea Event + EventTimelineLinks via integration event `BookingCreated` |
 | `Access` | Evalúa `VisibilityMode` por actor |
 | `Users` | Autofill intake desde perfil autenticado |
 
@@ -280,7 +281,7 @@ Slot {
 **Notas:**
 - `HoldSlot` requiere idempotency key (anti double-submit).
 - Validation behaviors auto-registrados; no agregar por handler.
-- Integration event `BookingCreated` → handler en `Timelines` crea Event.
+- Integration event `BookingCreated` → handler en `Events` crea Event + links a timelines de proveedor y cliente (ADR-0006).
 
 ### Frontend (vt-catalog-mfe)
 
@@ -314,14 +315,14 @@ Scenario: AutoConfirm booking exitoso
   And usuario autenticado
   When selecciona slot, completa intake y confirma
   Then Booking.status = Confirmed
-  And Event creado en Timeline del proveedor
+  And Event creado y linked a timelines de proveedor y cliente
   And notificaciones enviadas a cliente y proveedor (in-app + email + push)
 
 Scenario: ManualConfirm booking pendiente
   Given Listing.confirmationPolicy = ManualConfirm
   When usuario confirma
   Then Booking.status = Pending
-  And NO se crea Event en Timeline
+  And NO se crea Event (se crea al confirmar en Flow 10)
   And UI muestra "awaiting provider approval"
   And proveedor recibe notificación
 

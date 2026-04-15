@@ -25,17 +25,35 @@ description: Catálogo inicial de comandos/eventos mencionados en Domain Behavio
 - ListingArchived
 - ListingUpdated
 
-## Supply / Timeline
+## Timelines (configuración de agenda)
 **Commands**
-- UpsertEvents
-- ConfigureAvailabilityRules
+- CreateTimeline
+- SetTimelinePrivacy
+- AddConflictRule / RemoveConflictRule
 - ShareTimeline (via Agreements)
 
 **Events**
-- TimelineUpdated
+- TimelineCreated
+- TimelinePrivacyChanged
 - TimelineShared
-- EventCreated / EventUpdated / EventCancelled
-- SlotsProjected (projection event)
+- ConflictRuleAdded / ConflictRuleRemoved
+
+## Events (lo que ocupa tiempo — ADR-0006)
+**Commands**
+- AddEvent (manual/block)
+- UpdateEvent
+- RemoveEvent
+- ResolveConflict
+- RegisterBookingOnTimeline (internal, triggered by BookingCreated integration event)
+
+**Events**
+- EventCreated
+- EventUpdated
+- EventCancelled
+- EventLinkedToTimeline
+- EventUnlinkedFromTimeline
+- ConflictDetected
+- ConflictResolved
 
 ## Booking
 

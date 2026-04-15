@@ -48,8 +48,8 @@ El módulo `Policies` (Flow 11 y BC 07) no está implementado en v1. Para este f
 | NoShow del cliente | Penalidad fija según config del Listing (v1 simple) | Según `NoShowPolicy` |
 
 ### Relación con Timeline
-Los Bookings `Confirmed` generan un Event en el Timeline del proveedor (Flow 08).
-Al cancelar o completar, el Event se actualiza/cierra.
+Los Bookings `Confirmed` generan un Event independiente linked a los timelines del proveedor y del cliente (ADR-0006).
+Al cancelar o completar, el Event se actualiza y todas las vistas de timeline reflejan el cambio automáticamente.
 
 ---
 
@@ -86,7 +86,7 @@ Al cancelar o completar, el Event se actualiza/cierra.
 8. Proveedor confirma (con o sin mensaje).
 9. Sistema:
    - Transiciona el Booking a `Confirmed`.
-   - Crea el Event en el Timeline del proveedor (bloquea disponibilidad).
+   - Crea un Event linked a los timelines del proveedor y del cliente (bloquea disponibilidad).
    - Envía notificación in-app + email al cliente con el mensaje incluido (si existe).
    - Actualiza la proyección de Slots del Listing.
 
@@ -122,7 +122,7 @@ Al cancelar o completar, el Event se actualiza/cierra.
     - Transiciona a `Cancelled`.
     - Emite `BookingCancelled`.
     - Si `Confirmed`: Commerce emite reembolso (100% en v1).
-    - Cancela/elimina el Event en el Timeline del proveedor.
+    - Cancela el Event (todas las vistas de timeline linked reflejan el cambio).
     - Envía notificación in-app + email al cliente con motivo.
     - Reprojcta Slots del Listing.
 
@@ -177,10 +177,10 @@ No se agregan nuevas entidades; se extiende el aggregate `Booking`.
 
 | Event | Disparado por | Efectos downstream |
 |-------|-------------|-------------------|
-| `BookingConfirmed` | `ConfirmBooking` | Timeline: crea Event; Notification: in-app + email al cliente |
+| `BookingConfirmed` | `ConfirmBooking` | Events: crea Event + links a timelines; Notification: in-app + email al cliente |
 | `BookingCompleted` | `CompleteBooking` | Commerce: incentivos anti-cancelación si aplica; Notification: in-app + email al cliente |
 | `BookingNoShow` | `MarkNoShow` | Commerce: aplica penalidad al cliente; Notification: in-app + email al cliente |
-| `BookingCancelled` | `CancelBooking` | Timeline: cancela Event; Commerce: reembolso si Confirmed (100% v1); Notification: in-app + email al cliente |
+| `BookingCancelled` | `CancelBooking` | Events: cancela Event (refleja en todos los timelines linked); Commerce: reembolso si Confirmed (100% v1); Notification: in-app + email al cliente |
 
 ---
 
@@ -192,7 +192,7 @@ No se agregan nuevas entidades; se extiende el aggregate `Booking`.
 4. `Cancelled`, `Completed` y `NoShow` son estados terminales; no pueden revertirse.
 5. Al cancelar un Booking `Confirmed`, siempre se emite reembolso (100% en v1; según Policy post-v1).
 6. Al cancelar un Booking `Pending`, no se aplica ninguna penalidad ni reembolso.
-7. Un Booking completado o marcado NoShow conserva su Event en el Timeline como registro histórico.
+7. Un Booking completado o marcado NoShow conserva su Event como registro histórico (visible en los timelines linked).
 8. La auditoría registra quién ejecutó cada acción (Owner o Delegado) y cuándo.
 
 ---

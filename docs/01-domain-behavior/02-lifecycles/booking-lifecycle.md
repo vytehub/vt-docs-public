@@ -10,7 +10,7 @@ description: Estados del Booking, transiciones, reglas de cada transición y efe
 | Estado | Descripción |
 |---|---|
 | **Pending** | El usuario solicitó la reserva. El slot está en soft-hold. Ocurre cuando `Listing.confirmationPolicy = ManualConfirm \| RequestOnly`: el proveedor debe confirmar manualmente. Si `confirmationPolicy = AutoConfirm`, el booking pasa directamente a **Confirmed**. |
-| **Confirmed** | La reserva está confirmada. El slot está bloqueado. Se crea (o confirma) el Event asociado en el Timeline. |
+| **Confirmed** | La reserva está confirmada. El slot está bloqueado. Se crea un Event independiente linked a los timelines del proveedor y del cliente (ADR-0006). |
 | **Cancelled** | La reserva fue cancelada por el usuario, el proveedor, o el sistema. El slot queda disponible nuevamente (re-proyección). |
 | **Completed** | El servicio ocurrió y cerró. Estado terminal positivo. |
 | **NoShow** | El attendee no se presentó. Estado terminal negativo. Puede disparar penalidades o incentivos según política. |
@@ -48,13 +48,13 @@ stateDiagram-v2
 ### `[*] → Confirmed` (via `CreateBooking`)
 
 - Ocurre cuando `Listing.confirmationPolicy = AutoConfirm`: confirmación inmediata.
-- Se crea el **Event** en el Timeline del proveedor.
+- Módulo Events crea un **Event** (type=booking) linked a los timelines del proveedor y del cliente via `EventTimelineLink`.
 - Evento emitido: `BookingCreated`.
 
 ### `Pending → Confirmed` (via `ConfirmBooking`)
 
 - El proveedor aprueba manualmente la solicitud.
-- Se crea el **Event** en el Timeline del proveedor (bloquea disponibilidad).
+- Módulo Events crea un **Event** linked a los timelines del proveedor y del cliente (bloquea disponibilidad).
 - Se disparan notificaciones al usuario y al proveedor.
 - Evento emitido: `BookingConfirmed`.
 
@@ -62,13 +62,13 @@ stateDiagram-v2
 
 - El usuario cancela antes de que el proveedor confirme, o el proveedor rechaza.
 - El soft-hold se libera; el slot vuelve a estar disponible.
-- Se reprojetta disponibilidad en el Timeline.
+- Se reproyecta disponibilidad (módulo Events recalcula slots).
 - Evento emitido: `BookingCancelled`.
 
 ### `Confirmed → Completed` (via `CompleteBooking`)
 
 - El servicio ocurrió. El proveedor o el sistema marca la reserva como completada.
-- El Event en el Timeline permanece como registro histórico.
+- El Event permanece como registro histórico (visible en los timelines linked).
 - Si aplica: se ejecutan incentivos anti-cancelación (`Devolución por Compromiso`).
 - Evento emitido: `BookingCompleted`.
 
@@ -76,7 +76,7 @@ stateDiagram-v2
 
 - La reserva se cancela después de haber sido confirmada.
 - Se aplican **políticas de cancelación** (plazo, penalidades, reembolsos) — ver `07-policies/` *(P0 pendiente)*.
-- El Event en el Timeline se cancela o elimina; la disponibilidad se reprojetta.
+- El Event se marca como cancelled; la disponibilidad se reproyecta. Los timelines linked reflejan el cambio automáticamente.
 - Evento emitido: `BookingCancelled`.
 
 ### `Confirmed → NoShow` (via `MarkNoShow`)
@@ -112,7 +112,7 @@ stateDiagram-v2
 **Reglas:**
 - Solo puede haber **un** `RescheduleRecord` en estado `Pending` por Booking a la vez.
 - `ConfirmReschedule` solo puede ejecutarlo el actor **opuesto** al que propuso.
-- Al confirmar: el slot del Booking se actualiza, el Event en el Timeline se reproyecta.
+- Al confirmar: el slot del Booking se actualiza, el Event se actualiza y la disponibilidad se reproyecta.
 - Al rechazar: el Booking permanece en el slot original; se puede proponer un nuevo reschedule.
 - Ver: Flow 11 — Cancelar, Reagendar y Policies.
 
@@ -120,7 +120,7 @@ stateDiagram-v2
 
 ## Invariantes
 
-- Un Booking **Confirmed** debe tener un Event asociado en el Timeline correspondiente.
+- Un Booking **Confirmed** debe tener un Event asociado, linked a los timelines del proveedor y del cliente (ADR-0006).
 - Un Booking **Cancelled** o **Completed** o **NoShow** no puede transicionar a ningún otro estado.
 - La disponibilidad del slot siempre refleja el estado actual de los Bookings activos (`Pending` + `Confirmed`).
 - A lo sumo un `RescheduleRecord` en estado **Pending** por Booking (invariante de Flow 11).

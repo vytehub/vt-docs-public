@@ -55,7 +55,7 @@ Un Profile puede:
 ## 2) Tiempo y agenda
 
 ### Timeline
-Representa **tiempo** (agenda) y su ocupación.
+Representa la **configuración de una agenda**: de quién es, qué reglas aplican, quién puede ver.
 
 Regla clave:
 > El owner de un Timeline es quien pone el tiempo (persona) o controla un recurso/agenda (organización).
@@ -65,10 +65,12 @@ Ejemplos:
 - Colegio (org) es owner del timeline “Salita 3B”.
 - Club (org) es owner del timeline “Cancha 1” (si modelás la cancha como agenda propia).
 
-En un Timeline viven:
-- Events (manuales o derivados)
-- Bookings (que bloquean tiempo)
-- **Conflict Rules** (qué cuenta como conflicto y qué acción tomar)
+Un Timeline define:
+- **Configuración** (nombre, tipo, privacy, color, timezone)
+- **Members** (quién puede ver/gestionar esta agenda)
+- **Conflict Rules** (qué cuenta como conflicto y qué acción tomar entre timelines)
+
+> **Importante (ADR-0006):** Timeline **no contiene** Events. Los Events son entidades independientes que se **linkean** a uno o más Timelines via `EventTimelineLink`. Ver sección 7.
 
 ---
 
@@ -195,32 +197,50 @@ Un Slot:
 ## 7) Qué pasa en el tiempo: Events
 
 ### Event
-Algo que ocurre en un Timeline (manual o derivado).
+Un Event es una **entidad independiente** que representa algo que ocupa tiempo.
 
-- **Manual / no comercial**: acto escolar, partido, viaje, reunión.
-- **Derivado / comercial**: turno/cita generado por un Booking.
+> **Decisión (ADR-0006):** Event es aggregate root propio, no owned por Timeline. Un Event se linkea a **uno o más Timelines** via `EventTimelineLink` (relación N:M).
 
-Un Event puede:
-- existir sin Booking
-- estar asociado a un Service (para semántica)
-- estar asociado a un Booking (si nace de una reserva)
-- estar asociado a un Place (dónde ocurre)
+Tipos de Event:
+- **Manual / no comercial**: acto escolar, partido, viaje, reunión, bloqueo personal.
+- **Derivado / comercial**: turno/cita generado por un Booking confirmado.
+- **Externo** (futuro): importado de calendario externo.
+
+Un Event:
+- puede existir sin Booking (manual o externo)
+- puede estar asociado a un Booking (si nace de una reserva; `sourceId = bookingId`)
+- puede estar asociado a un Place (dónde ocurre)
+- se **linkea a N Timelines** (ej: un booking confirmado se ve en el timeline del proveedor Y del cliente)
+
+### EventTimelineLink
+Relación many-to-many entre Event y Timeline.
+
+- `eventId` → el evento
+- `timelineId` → el timeline desde donde se visualiza
+- `role` → primary | viewer | readonly
+
+Esto permite que un único evento (ej: un booking confirmado) sea visible en múltiples agendas sin duplicar datos. Cuando el evento cambia de status, todas las vistas reflejan el cambio automáticamente (1 write, N vistas).
+
+### Módulo Events
+El módulo **Events** es el hub central de "lo que ocupa tiempo". Además de Event y EventTimelineLink, contiene:
+- **ConflictDetection**: detección de solapamientos entre eventos de diferentes timelines
+- **Slot Projection**: cálculo de disponibilidad (combina Listing.recurrence - Events ocupados - ConflictRules)
 
 ---
 
 ## 8) Reservas: Bookings
 
 ### Booking
-Representa una **reserva/confirmación** de un Listing.
-- bloquea tiempo en un Timeline
-- suele generar o asociarse a un Event
+Representa la **transacción comercial** de una reserva.
+- al confirmarse, emite un integration event que crea un Event (entidad independiente) linked a los timelines relevantes
+- guarda snapshots inmutables (Service, Listing, Policy, Form) al momento de la confirmación
 - puede referenciar un Place
-- tiene estado (pendiente/confirmado/cancelado)
+- tiene estado (holding/pending/confirmed/cancelled/completed/noshow)
 - tiene responsable (quien reserva/paga)
 
 Regla clave (consistencia):
-> Un Event puede existir sin Booking, pero un Booking **confirmado** no debería existir sin un Event asociado en el Timeline target.  
-> (Para *pending*, puede no haber Event o haber un Event tentativo, según política.)
+> Un Event puede existir sin Booking, pero un Booking **confirmado** debe tener un Event asociado (linked a los timelines del proveedor y del cliente).
+> (Para *pending*, no se crea Event hasta que el proveedor confirme.)
 
 En VyteMerge, un Booking puede ser:
 - **Private**: el responsable invita a otros (ej: “reservé la cancha e invité a 9”)
@@ -445,15 +465,16 @@ Integración típica (por etapas):
 
 ## Resumen del modelo
 - **Profile**: identidad social
-- **Timeline**: tiempo y conflictos
+- **Timeline**: configuración de agenda (privacy, conflict rules, members)
 - **Place**: dónde ocurre (ubicación + zona horaria)
 - **Service**: qué es (servicio)
 - **Product**: qué es (producto)
 - **Catalog**: conjunto de Services y Products
 - **Listing**: cómo se ofrece/vende (reservable o comprable; promocionable; puede depender de Place)
 - **Slot**: proyección reservable
-- **Event**: ocurre en Timeline (y puede tener Place)
-- **Booking**: reserva/confirmación (Private/Open)
+- **Event**: entidad independiente que ocupa tiempo, linked a N Timelines (ADR-0006)
+- **EventTimelineLink**: relación N:M entre Event y Timeline
+- **Booking**: transacción de reserva (Private/Open); al confirmar crea Event linked a timelines
 - **Attendees**: participantes (invitar/unirse, cupos, MinToConfirm)
 - **Order**: compras/pagos (y futuros combos)
 - **Devolución por Compromiso**: incentivo opcional ligado a Booking+Order
@@ -498,7 +519,9 @@ Salidas posibles:
 - Confirmación manual requerida (futuro)
 
 Relaciones:
-- Viven en **Timeline** (porque afectan el tiempo del owner).
+- **ConflictRules** viven en **Timeline** (definen qué timelines observar y qué acción tomar).
+- **ConflictDetection** (detección de solapamientos reales) vive en **Events** (opera sobre los eventos linked a los timelines).
 - Las reglas del **Listing** (buffers, ventanas) son restricciones adicionales, pero la decisión de conflicto es del Timeline.
-- Documentación de referencia: `04-bounded-contexts/02.Supply - Time & Place/01.timelines/02.timeline_conflict_rules.md`
+- Documentación de referencia: `04-bounded-contexts/02-supply/01.timelines/02.timeline_conflict_rules.md`
+- Decisión arquitectónica: `private/decisions/ADR-0006-event-timeline-independence.md`
 

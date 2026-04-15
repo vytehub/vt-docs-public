@@ -7,10 +7,11 @@ Base path: `/api/v1`
 ## Overview
 
 The Booking flow spans multiple bounded contexts:
-1. **Offering** provides the Listing (rules, SlotConfig)
-2. **Timelines** provides available Slots
-3. **Booking** manages the Booking lifecycle
-4. **Communication** sends notifications
+1. **Listing** provides the Listing (rules, SlotConfig, recurrence)
+2. **Events** provides available Slots (via Slot Projection) and creates Events on booking confirmation (ADR-0006)
+3. **Booking** manages the Booking lifecycle (transaction)
+4. **Timelines** provides agenda configuration (privacy, conflict rules)
+5. **Communication** sends notifications
 
 See `01-domain-behavior/01-core-flows/02-open-and-book.md` for the end-to-end flow.
 

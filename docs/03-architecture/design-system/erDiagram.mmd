@@ -1,0 +1,80 @@
+erDiagram
+    Listing {
+        UUID id PK
+        UUID profile_id FK "NOT NULL"
+        UUID service_id FK "NULLABLE"
+        UUID place_id FK "NULLABLE"
+        UUID shared_capacity_group_id FK "NULLABLE"
+        VARCHAR_200 title "NOT NULL"
+        TEXT description "NOT NULL"
+        TEXT location "NULLABLE"
+        INT status "NOT NULL (enum)"
+        INT meeting_method_type "NOT NULL (enum)"
+        TEXT time_zone_id "NOT NULL"
+        INT capacity "NOT NULL DEFAULT 1"
+        TIMESTAMP starts_at_utc "NULLABLE"
+        TIMESTAMP ends_at_utc "NULLABLE"
+        TIMESTAMP updated_at "NOT NULL"
+        NUMERIC_18_4 price "NOT NULL"
+        VARCHAR_10 currency "NOT NULL DEFAULT USD"
+        INT confirmation_policy "NOT NULL (enum)"
+        INT visibility "NOT NULL (enum)"
+        INT slot_config_duration_min "NOT NULL"
+        INT slot_config_pre_buffer_min "NULLABLE"
+        INT slot_config_post_buffer_min "NULLABLE"
+        INT slot_config_bw_min_notice_hours "NOT NULL"
+        INT slot_config_bw_max_advance_days "NOT NULL"
+        INT slot_duration_minutes "NOT NULL DEFAULT 30"
+        INT break_between_slots_min "NOT NULL DEFAULT 5"
+        TEXT slot_time_zone_id "NOT NULL"
+        JSONB channel_ids "NOT NULL DEFAULT []"
+        JSONB tags "NOT NULL DEFAULT []"
+        JSONB intake_form "NOT NULL DEFAULT []"
+        JSONB add_ons "NOT NULL DEFAULT []"
+        JSONB recurrence "NOT NULL"
+    }
+
+    ListingMedia {
+        UUID id PK
+        UUID listing_id FK "NOT NULL"
+        TEXT url "NOT NULL (Uri)"
+        TEXT caption "NULLABLE"
+        BOOL is_cover "NOT NULL DEFAULT false"
+        INT order "NOT NULL 1-based"
+    }
+
+    SharedCapacityGroup {
+        UUID id PK
+        UUID owner_id FK "NOT NULL"
+        INT capacity_effective "NOT NULL"
+        TIMESTAMP created_at_utc "NOT NULL"
+        TIMESTAMP updated_at_utc "NOT NULL"
+    }
+
+    SharedCapacityGroupMember {
+        UUID group_id PK "NOT NULL"
+        UUID listing_id PK "NOT NULL UNIQUE"
+        TIMESTAMP added_at_utc "NOT NULL"
+    }
+
+    Profile {
+        UUID id PK
+    }
+
+    Service {
+        UUID id PK
+        STRING status "must be Active to publish"
+    }
+
+    Place {
+        UUID id PK
+        STRING name "must be set to publish"
+    }
+
+    Listing ||--o{ ListingMedia : "1:N max 5"
+    Listing }o--o| SharedCapacityGroup : "N:1 optional"
+    SharedCapacityGroup ||--o{ SharedCapacityGroupMember : "1:N"
+    SharedCapacityGroupMember }o--|| Listing : "FK listing_id"
+    Listing }o--|| Profile : "FK profile_id"
+    Listing }o--o| Service : "FK service_id"
+    Listing }o--o| Place : "FK place_id"
