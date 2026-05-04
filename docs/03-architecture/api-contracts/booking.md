@@ -73,34 +73,53 @@ The command used depends on `Listing.confirmationPolicy`:
 
 ### `POST /bookings/hold` 🚧
 
-Creates a soft-hold on a Slot with TTL (default: 5 min). Used when the user selects a slot before completing the booking form.
+Creates a soft-hold on a Slot with TTL (default: 10 min). Used when the user selects a slot before completing the booking form.
 
 > **Added 2026-03-26:** Previously defined in Flow 02 but missing from this contract. See `current-product-truth.md` CONFLICT-04.
+>
+> **Updated 2026-04-27:** request now requires `slotStartUtc`/`slotEndUtc` plus either `optionId` or `clientAddress`. The server validates that `slotId == hash(listingId, optionId, slotStartUtc, slotEndUtc)`; mismatches return `InvalidSlotId`. The booking persists the slot interval + option as the source of truth.
 
-**Request:**
+**Request (option-based):**
 ```json
 {
   "listingId": "uuid",
-  "slotId": "uuid"
+  "slotId": "uuid",
+  "slotStartUtc": "ISO8601",
+  "slotEndUtc": "ISO8601",
+  "optionId": "uuid"
 }
 ```
 
-**Response:** `201 Created`
+**Request (distance-based, OnAttendeeLocation):**
 ```json
 {
-  "holdId": "uuid",
+  "listingId": "uuid",
   "slotId": "uuid",
-  "expiresAt": "ISO8601"
+  "slotStartUtc": "ISO8601",
+  "slotEndUtc": "ISO8601",
+  "clientAddress": "string",
+  "clientLatitude": "decimal?",
+  "clientLongitude": "decimal?"
 }
 ```
+
+**Response:** `200 OK` (returns the bookingId/holdId as a raw GUID body)
 
 **Behavior:**
 - Backend creates a Booking in `Holding` state with TTL.
 - If TTL expires: backend auto-cancels the hold, slot becomes available again.
 - Frontend should display countdown timer.
+- The unique partial index `ux_bookings_listing_slot_active` (capacity = 1, v1) rejects concurrent races with `SlotNotAvailable`.
 
 **Command dispatched:** `HoldSlotCommand`
 **Event emitted:** `SlotHeld`
+
+**Errors:**
+- `InvalidSlotId` — slotId does not match the deterministic hash.
+- `SlotIntervalInvalid` — start ≥ end.
+- `SlotInPast` — start is in the past.
+- `SlotNotAvailable` — concurrent race or slot already held/booked.
+- `CapacityGreaterThanOneNotSupported` — listing.capacity > 1 (v1 limitation).
 
 ---
 

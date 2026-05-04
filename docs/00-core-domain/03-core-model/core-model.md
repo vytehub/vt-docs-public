@@ -1,6 +1,6 @@
 ---
 title: Core Model
-description: Modelo mental central de VyteMerge (Profile, Timeline, Place, Catalog, Service, Product, Listing, Slot, Event, Booking, Attendees, Orders, Agreements, Access, Campaigns, Feed, Chat, Channels).
+description: Modelo mental central de VyteMerge (Profile, Timeline, Place, Catalog, Service, Product, Listing, Slot, Event, Booking, Attendees, Orders, Agreements, Access, Campaigns, Feed, Chat). Channels diferidos post-v1 (ADR-0007).
 ---
 
 # Core Model (VyteMerge)
@@ -24,7 +24,7 @@ Sobre eso se apoyan:
 - **Orders** (compras / pagos)
 - **Agreements + Access** (relaciones y permisos/visibilidad)
 - **Campaigns** (autopromoción pagada de listings)
-- **Feed + Chat + Channels** (superficies de interacción)
+- **Feed + Chat** (superficies de interacción) — *Channels diferidos post-v1, ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md)*
 
 > Nota: Casos específicos (vouchers, canchas públicas, marketplace B2B, etc.) viven en *Use Cases*, no en este documento.
 
@@ -430,6 +430,11 @@ Principios (para documentar sin comprometer implementación):
 
 ## 15) Feed, Chat, Channels e Integraciones
 
+> ℹ️ **Channels diferidos post-v1.** La sección "Grupos o Canales" describe el diseño objetivo, pero
+> en v1 los Channels NO existen como entidad. Los Listings se distribuyen vía `Visibility` + Profile
+> + Feed/Discover. Ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md).
+
+
 ### Feed (scroll principal)
 VyteMerge necesita un **feed** donde conviven diferentes “cards”:
 - **Posts** (social)
@@ -483,7 +488,7 @@ Integración típica (por etapas):
 - **Campaigns**: promoción pagada de Listings (con bidding)
 - **Feed**: descubrimiento (posts + listings + sponsored)
 - **Chat**: coordinación y soporte
-- **Channels**: audiencias segmentadas
+- **Channels**: audiencias segmentadas — *post-v1, ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md)*
 
 
 ## VyteMerge

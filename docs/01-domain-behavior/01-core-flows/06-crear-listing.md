@@ -26,7 +26,7 @@ version: 1
 | Dominio | Entidad | Responsabilidad |
 |---------|---------|-----------------|
 | **Catalog** | `Service` | Operativo: duración, precio base, confirmationPolicy, intakeForm, location |
-| **Offer** | `Listing` | Comercial/discovery: copy, media, precio efectivo, slotConfig, channels, visibility, add-ons |
+| **Offer** | `Listing` | Comercial/discovery: copy, media, precio efectivo, slotConfig, visibility, add-ons |
 
 Reglas de relación:
 - **1 Service → N Listings** (misma oferta, múltiples canales, precios, plazas o contextos)
@@ -74,7 +74,6 @@ Business navega a **Service Detail** y pulsa **"Crear Listing"**
      - `price` — precio efectivo (≥ 0); sobreescribe `Service.basePrice`.
      - `confirmationPolicy` — `AutoConfirm | ManualConfirm | RequestOnly`.
      - `visibility` — `Public` o `Private`.
-     - `channelIds[]` — al menos un canal de distribución.
      - `slotConfig` — reglas de scheduling (ADR-0001):
        - `durationMin` (> 0)
        - `bookingWindow` (ventana mínima y máxima de anticipación)
@@ -129,7 +128,6 @@ Listing {
   -- priceModifiers[]: reservado para v2 (ADR-0004)
   confirmationPolicy: AutoConfirm | ManualConfirm | RequestOnly  -- requerido para Published
   visibility:        Public | Private      -- requerido para Published
-  channelIds:        ChannelId[]           -- al menos uno requerido para Published
   slotConfig:        SlotConfig            -- requerido para Published (ADR-0001)
   intakeForm:        FieldDefinition[]     -- opcional; preguntas al cliente al reservar
   addOns:            AddOn[]               -- opcional; productos o extensiones de servicio
@@ -195,7 +193,7 @@ FieldDefinition {                          -- ítem del intakeForm; owned by Lis
 3. `title` no puede estar vacío para publicar.
 4. `placeId` es requerido para ServiceListing v1.
 5. `slotConfig.durationMin` debe ser > 0 para publicar.
-6. `visibility` y al menos un `channelId` son requeridos para publicar.
+6. `visibility` es requerido para publicar.
 6a. `confirmationPolicy` es requerido para publicar.
 7. El `profileId` del Listing debe coincidir con el `profileId` del Service referenciado
    (salvo Agreement con `listing:create` habilitado).
@@ -258,7 +256,7 @@ FieldDefinition {                          -- ítem del intakeForm; owned by Lis
 - [ ] Sistema bloquea la publicación si faltan campos requeridos, indicando cuáles.
 - [ ] Business puede publicar el Listing una vez completados todos los campos requeridos.
 - [ ] Al publicar, el sistema dispara la proyección de Slots en Supply.
-- [ ] Al publicar, el Listing aparece en Discovery según su `visibility` y `channelIds`.
+- [ ] Al publicar, el Listing aparece en Discovery según su `visibility`.
 - [ ] Listing con `priceModifiers` muestra el precio correcto según el Place asociado; fallback a `Service.basePrice` si no hay modifier.
 - [ ] Actualizar campos comerciales de un Listing Published no modifica Bookings existentes.
 - [ ] No se puede publicar un Listing si su Service referenciado está Archived.
@@ -272,7 +270,6 @@ FieldDefinition {                          -- ítem del intakeForm; owned by Lis
 
 - **`slotConfig` completo:** campos adicionales de `04.scheduling_slots.md` que deben ser requeridos para publicar
   vs opcionales (ej: ¿bookingWindow es requerida o tiene defaults razonables?).
-- **`channelIds[]`:** ¿cuáles son los channels disponibles en v1? ¿hay un channel "default" (ej: perfil público)?
 - **`AddOns` estructura:** ¿un AddOn referencia un ProductId del Catálogo, o puede ser un item custom de texto+precio?
   Ver `03.add_ons_bundles.md`.
 - **Permisos de Staff/Delegado:** ¿qué operaciones exactas incluye el permiso `listing:create`? ¿Solo crear Draft,

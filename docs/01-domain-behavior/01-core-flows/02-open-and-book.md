@@ -75,6 +75,16 @@ El usuario navega a Listing Detail:
 
 ## 5. Main Flow
 
+### Paso 0 (entry point alternativo) — Discovery por Profile
+
+Si el visitante llega al perfil de un proveedor (centro médico, profesional independiente, estudio) en vez de al detalle de un listing puntual:
+
+1. Frontend hace `GET /social/profiles/{profileId}` para datos públicos del proveedor.
+2. Frontend hace `GET /profiles/{profileId}/listings?tag=cardiologia&page=1&pageSize=20` para el catálogo. La respuesta trae cards (id, título, descripción corta, currency, tags, options, cover) — sin slots inlined.
+3. Visitante elige un listing del catálogo → continúa con Paso 1 (Cargar Listing Detail) usando el `listingId` de la card.
+
+> El endpoint `/profiles/{profileId}/listings` filtra a `Status=Published + Visibility=Public` server-side. No expone Draft/Privados aunque la query sea manipulada. Filtro por profesional llega con `Listing.PerformerTimelineId` (futuro).
+
 ### Paso 1 — Cargar Listing Detail
 
 1. Frontend hace `GET /listings/{listingId}`.
@@ -87,8 +97,8 @@ El usuario navega a Listing Detail:
 
 ### Paso 2 — Seleccionar Slot
 
-1. Frontend hace `GET /listings/{listingId}/slots?from=YYYY-MM-DD&to=YYYY-MM-DD`.
-2. Backend retorna Slots disponibles (proyección sobre scheduling + `Confirmed + Pending` bookings activos).
+1. Frontend hace `GET /events/availability?listingId=...&optionId=...&from=...&to=...`.
+2. Backend retorna Slots disponibles (proyección sobre scheduling + `Confirmed + Pending` bookings activos). **Cada slot trae `id` determinístico** = `hash(listingId, optionId, startUtc, endUtc)`.
 3. Usuario selecciona un Slot en el Slot Picker.
 4. Frontend muestra el slot con **timezone del Place/Listing** por defecto.
    - Si el usuario tiene otro timezone configurado en su perfil: se muestra en ambos.
@@ -96,8 +106,10 @@ El usuario navega a Listing Detail:
 
 ### Paso 3 — Completar Intake Form + Soft-hold
 
-1. Al seleccionar slot, frontend hace `POST /bookings/hold` con `{ listingId, slotId }`.
-   - Backend crea Booking en `Holding` con TTL (default: 5 min).
+1. Al seleccionar slot, frontend hace `POST /bookings/hold` con `{ listingId, slotId, slotStartUtc, slotEndUtc, optionId }` (o `clientAddress` para `OnAttendeeLocation`).
+   - Backend valida que `slotId == hash(listingId, optionId, slotStartUtc, slotEndUtc)` (rechaza con `InvalidSlotId` si el cliente forjó valores).
+   - Backend crea Booking en `Holding` con TTL (default: 5 min) y persiste `slot_start_utc` + `slot_end_utc`.
+   - El unique partial index `ux_bookings_listing_slot_active` garantiza no overbooking aunque dos clientes corran al mismo tiempo (regla v1: un listing no puede tener dos bookings activos arrancando al mismo instante UTC, sin importar la option).
    - Frontend muestra countdown timer.
    - Si TTL expira: backend cancela el `Holding`, slot liberado, UI notifica.
 2. Frontend renderiza Booking Form:

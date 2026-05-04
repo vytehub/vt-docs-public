@@ -42,7 +42,7 @@ deprecated_by: "Flows 05, 06, 08"
    - aplica reglas de capacity/assignment
 5. Business publica el Listing (**Published**).
 6. Sistema:
-   - habilita el listing para surfaces (link, channels, discovery/feed según reglas)
+   - habilita el listing para surfaces (link, profile, discovery/feed según reglas de Visibility)
    - (si corresponde) indexa el listing en Search/Discovery.
 
 ## Domain Trace (Command → Aggregate → Event)
@@ -62,10 +62,9 @@ deprecated_by: "Flows 05, 06, 08"
   - **Aggregate:** `Listing`
   - **Invariants:** listing válido; reglas mínimas completas; permisos ok.
   - **Events:** `ListingPublished`
-- **Projections:** 
+- **Projections:**
   - `DiscoveryIndexUpdated`
   - `FeedEligibilityUpdated` (si aplica)
-  - `Link/ChannelVisibilityUpdated`
 
 ## Edge Cases
 - Timeline con conflictos: slots se recortan o se marcan como no disponibles.

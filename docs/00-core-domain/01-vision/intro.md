@@ -49,7 +49,7 @@ Ser la **plataforma social de referencia** para agendar y descubrir servicios, d
 6. Slots & Bookings
 7. Places
 8. Dynamic Forms (Intake)
-9. Channels (Chat)
+9. Channels (Chat) — *post-v1, ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md)*
 10. Notifications
 11. Suggest (Feed & Recommendations)
 12. Social Graph (Follow)

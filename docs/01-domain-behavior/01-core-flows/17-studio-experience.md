@@ -490,8 +490,8 @@ Listing {
   slotConfig: SlotConfiguration      // durationMin, buffers, bookingWindow
   intakeForm: FieldDefinition[]      // preguntas al reservar
   addOns: AddOn[]                    // extras opcionales
-  channelIds: UUID[]                 // al menos 1 para publicar
   recurrence: ListingRecurrence      // weekly/nweeks/specificDates
+  // Note: Channels (audiencias comunidad-style) deferidos post-v1 — ver ADR-0007
 }
 ```
 

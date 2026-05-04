@@ -1,7 +1,13 @@
 ---
-title: Channels
+title: Channels (deferred — post-v1)
 description: Comunidades/audiencias (tipo grupos) para discovery, conversación y distribución de contenido (posts, listings, events).
+status: deferred
 ---
+
+> ⚠️ **DEFERRED — post-v1.** Channels fueron diferidos del modelo v1 para mantener
+> el dominio Listing simple y consistente. Este diseño se conserva como referencia
+> para cuando reintroduzcamos Channels como **distribution layer** independiente
+> (no acoplada al Listing). Ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md).
 
 # Módulo Channels
 

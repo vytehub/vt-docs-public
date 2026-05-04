@@ -215,7 +215,7 @@ SearchIndex {
   tags           string[]
   publishedAt    DateTime
   updatedAt      DateTime
-  eligibility    jsonb         -- { visibility, channelIds, partnerOnly }
+  eligibility    jsonb         -- { visibility, partnerOnly } -- channels diferidos post-v1 (ADR-0007)
   -- GIN INDEX on searchVector
   -- GIN INDEX on tags
   -- INDEX (lat, lng)  -- para búsquedas geoespaciales

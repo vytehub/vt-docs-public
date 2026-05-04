@@ -29,10 +29,6 @@ erDiagram
         INT slot_config_post_buffer_min "NULLABLE"
         INT slot_config_bw_min_notice_hours "NOT NULL"
         INT slot_config_bw_max_advance_days "NOT NULL"
-        INT slot_duration_minutes "NOT NULL DEFAULT 30"
-        INT break_between_slots_min "NOT NULL DEFAULT 5"
-        TEXT slot_time_zone_id "NOT NULL"
-        JSONB channel_ids "NOT NULL DEFAULT []"
         JSONB tags "NOT NULL DEFAULT []"
         JSONB intake_form "NOT NULL DEFAULT []"
         JSONB add_ons "NOT NULL DEFAULT []"
@@ -190,8 +186,10 @@ To transition from Draft/Unpublished → Published, ALL must be true:
 - `place_id` is set
 - `price` >= 0
 - `slot_config.duration_min` > 0
-- `channel_ids` has at least 1 entry
+- at least one `ListingOption` exists and validates for publish
 - linked `Service` (if service_id set) must have status = Active
+
+> Channels (audiencias comunidad-style) fueron diferidos post-v1 — ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md).
 
 ## Default Weekly Schedule (on creation)
 

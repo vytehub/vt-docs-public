@@ -24,7 +24,7 @@ version: 1
 | Dominio | Entidad | Responsabilidad |
 |---------|---------|-----------------|
 | **Catalog** | `Service` | Operativo: nombre, duración, precio base, buffers |
-| **Listing** | `Listing` | Comercial/discovery: copy, media, tags, slotConfig, confirmationPolicy, visibility, intakeForm, addOns, placeId, channels |
+| **Listing** | `Listing` | Comercial/discovery: copy, media, tags, slotConfig, confirmationPolicy, visibility, intakeForm, addOns, placeId |
 
 > **Decisiones v1:** `location` (como placeId), `confirmationPolicy`, `intakeForm` y `media`
 > pertenecen al Listing, no al Service. Ver data model abajo (líneas 96-101).

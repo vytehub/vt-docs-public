@@ -4,8 +4,9 @@ Base path: `/api/v1`
 Module: `Vt.Modules.Listing`
 Schema: `listing`
 
-> Un Listing expone un Service comercialmente: precio efectivo, canales de distribución, slotConfig, visibility y add-ons.
+> Un Listing expone un Service comercialmente: precio efectivo, slotConfig, visibility y add-ons.
 > **1 Service → N Listings.** Discovery usa Listings. Booking usa el Service (snapshot).
+> Channels (distribution layer) fueron diferidos post-v1 — ver [ADR-0007](../../../private/decisions/ADR-0007-channels-deferred-from-v1.md).
 > Ver flow `06-crear-listing.md` y spec pack `DRAFT-create-listing` para reglas completas.
 
 ---
@@ -29,7 +30,6 @@ Crea un Listing en estado `Draft` vinculado a un Service `Active`.
   "price": { "amount": 0, "currency": "ARS" },
   "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
   "visibility": "Public | Private",
-  "channelIds": ["uuid"],
   "slotConfig": {
     "durationMinutes": 60,
     "preBufferMinutes": 0,
@@ -79,7 +79,6 @@ Retorna un Listing por ID. Público si `status=Published` y `visibility=Public`.
   "price": { "amount": 0, "currency": "ARS" },
   "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
   "visibility": "Public | Private",
-  "channelIds": ["uuid"],
   "slotConfig": {
     "durationMinutes": 60,
     "preBufferMinutes": 0,
@@ -108,7 +107,7 @@ Retorna un Listing por ID. Público si `status=Published` y `visibility=Public`.
 
 ### `GET /listings` 🚧
 
-Lista Listings del profile autenticado (owner view). Para discovery pública ver `search.md` (futuro).
+Lista Listings del profile autenticado (owner view). Para el viewer público ver `GET /profiles/:profileId/listings` más abajo. Para search global ver `search.md` (futuro).
 
 **Query params:** `?profileId=uuid&status=Draft|Published|Unpublished|Archived&page=1&pageSize=20`
 
@@ -135,6 +134,75 @@ Lista Listings del profile autenticado (owner view). Para discovery pública ver
 
 ---
 
+### `GET /profiles/:profileId/listings`
+
+Public viewer surface. Devuelve los Listings del profile filtrados a `Status=Published` y `Visibility=Public` server-side (nunca expone Draft/Archived/Private). Pensado para que un visitante navegue el catálogo de un centro médico, profesional o estudio.
+
+**Query params:**
+- `tag` *(opcional)* — filtra por tag exacta (ej: `cardiologia`).
+- `page`, `pageSize` *(opcionales)* — defaults `1` / `20`, max `100`.
+
+**Auth:** requiere usuario autenticado (mismo permiso que `GET /listings`). El filtro a Published+Public se aplica en el handler — el endpoint **no puede** devolver listings privados aunque el caller manipule la query.
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "profileId": "uuid",
+      "title": "string",
+      "description": "string",
+      "currency": "ARS",
+      "tags": ["cardiologia", "consultorio"],
+      "options": [
+        {
+          "id": "uuid",
+          "name": "Online",
+          "method": "GoogleCall | OnOwnerLocation | OnAttendeeLocation | PhoneCall | None",
+          "price": 5000.0,
+          "isDefault": true
+        }
+      ],
+      "coverMediaUrl": "https://cdn.example.com/cover.jpg"
+    }
+  ],
+  "totalCount": 1,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+**Slots NO se incluyen.** El cliente pide la disponibilidad por listing+option vía `GET /events/availability` cuando el visitante elige un listing concreto. Esto evita N range queries por carga del catálogo.
+
+**Filtro por profesional:** no soportado en v1. Hoy todos los listings de un profile usan el default timeline del profile. El filtrado real por profesional llega cuando se implemente `Listing.PerformerTimelineId` (PR2 del plan de availability federada).
+
+---
+
+### `GET /profiles/:profileId/listings/:listingId`
+
+Public viewer detail. Devuelve **el mismo `PublicListingCard`** que el endpoint de listado, pero para un listing puntual identificado por `listingId` y restringido a un profile específico.
+
+**Auth:** requiere usuario autenticado (mismo permiso `offerings:read` que el listado público).
+
+**Path params:**
+- `profileId` — el dueño esperado del listing.
+- `listingId` — el listing concreto a consultar.
+
+**Filtros server-side (hardcodeados):**
+- `status = Published`
+- `visibility = Public`
+- `profile_id = profileId` (de la URL)
+
+**Response:** `200 OK` con el shape `PublicListingCard` documentado arriba.
+
+**Errors:**
+- `404 NotFound` si el listing es Draft, Private, pertenece a otro profile o no existe. Las cuatro situaciones devuelven el **mismo error** — el endpoint nunca filtra entre "no existe" y "no es público" para no leak la existencia de listings no públicos.
+
+**Por qué un endpoint dedicado y no `GET /listings/:id`:** el endpoint genérico devuelve shape admin (incluye `Status`, `IntakeForm`, `Capacity`, etc.) y no filtra Published+Public, por lo que expone Draft/Private a cualquiera con el id. Este endpoint es el contrato seguro para viewers públicos.
+
+---
+
 ## Update
 
 ### `PATCH /listings/:listingId` 🚧
@@ -154,7 +222,6 @@ Si cambia `slotConfig`: Supply reproyecta Slots futuros.
   "price": { "amount": 0, "currency": "ARS" },
   "confirmationPolicy": "AutoConfirm | ManualConfirm | RequestOnly",
   "visibility": "Public | Private",
-  "channelIds": ["uuid"],
   "slotConfig": { "...": "..." },
   "capacity": 1,
   "intakeForm": [],
